@@ -22,17 +22,13 @@ class ChannelSwap(ForensicsTool):
     def __choose_swap(self, parent: tk.Misc) -> list | None:
         first_color = simpledialog.askinteger("First color", "0 for Red, 1 for Green and 2 Blue", parent=parent)
         second_color = simpledialog.askinteger("Second color", "0 for Red, 1 for Green and 2 Blue", parent=parent)
-
-        if None in (first_color, second_color): return None
-
         return [first_color, second_color]
 
 
     def run(self, parent: tk.Misc, document: ImageDocument) -> ToolResult:
         assert document.current is not None
         swap = self.__choose_swap(parent)
-        if swap is None:
-            return None
+        assert swap is not None
         rgb_image = document.current.convert("RGB")
         image_tensor = np.array(rgb_image)
         image_tensor[:,:,swap] = image_tensor[:,:,swap[::-1]]

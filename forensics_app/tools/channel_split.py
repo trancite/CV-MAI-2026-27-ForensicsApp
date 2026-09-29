@@ -4,7 +4,7 @@ import tkinter as tk
 
 from PIL import ImageOps, Image
 from tkinter import simpledialog
-
+from tkinter import colorchooser
 
 from forensics_app.core import ImageDocument
 from .base import ForensicsTool, ToolResult
@@ -19,9 +19,8 @@ class ChannelSplitTool(ForensicsTool):
         self.requires_image = True
 
     def __choose_color(self, parent: tk.Misc) -> np.array | None:
-        red = simpledialog.askfloat("Red", "Intensity", minvalue=0.0, maxvalue=1, parent=parent)
-        green = simpledialog.askfloat("Green", "Intensity", minvalue=0.0, maxvalue=1, parent=parent)
-        blue = simpledialog.askfloat("Blue", "Intensity", minvalue=0.0, maxvalue=1, parent=parent)
+        rgb, hex_color = tk.colorchooser.askcolor(title="Choose a color", parent=parent)
+        red, green, blue = rgb
         if None in (red, green, blue): return None
         if red == green == blue == 0: return np.full((3,), 1/3)
         colors = np.array([red, green, blue])
