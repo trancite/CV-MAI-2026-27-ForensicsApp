@@ -19,16 +19,21 @@ class ChannelSwap(ForensicsTool):
         self.requires_image = True
 
 
-    def __choose_swap(self, parent: tk.Misc) -> list | None:
+    def __choose_swap(self, parent: tk.Misc) -> list[int] | None:
         first_color = simpledialog.askinteger("First color", "0 for Red, 1 for Green and 2 Blue", parent=parent)
+        if first_color is None:
+            return None
         second_color = simpledialog.askinteger("Second color", "0 for Red, 1 for Green and 2 Blue", parent=parent)
+        if second_color is None:
+            return None
         return [first_color, second_color]
 
 
-    def run(self, parent: tk.Misc, document: ImageDocument) -> ToolResult:
+    def run(self, parent: tk.Misc, document: ImageDocument) -> ToolResult | None:
         assert document.current is not None
         swap = self.__choose_swap(parent)
-        assert swap is not None
+        if swap is None:
+            return None
         rgb_image = document.current.convert("RGB")
         image_tensor = np.array(rgb_image)
         image_tensor[:,:,swap] = image_tensor[:,:,swap[::-1]]

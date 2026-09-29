@@ -19,14 +19,18 @@ class ContrastStreching(ForensicsTool):
 
     def __choose_cutoff(self, parent: tk.Misc) -> float | None:
         cutoff = simpledialog.askfloat("Cutoff", "Percentage of pixels at the intensity boundaries to ignore.", minvalue=0.0, maxvalue=100, parent=parent)
+        if cutoff is None:
+            return None
         return cutoff
     
-    def run(self, parent: tk.Misc, document: ImageDocument) -> ToolResult:
+    def run(self, parent: tk.Misc, document: ImageDocument) -> ToolResult | None:
         image = document.current
         assert image is not None
         cutoff = self.__choose_cutoff(parent)
-        if cutoff is None: return None
-        contrasted_image = ImageOps.autocontrast(image, cutoff = cutoff)
+        if cutoff is None:
+            return None
+        rgb_image = document.current.convert("RGB")
+        contrasted_image = ImageOps.autocontrast(rgb_image, cutoff = cutoff)
         return ToolResult(
                         image=contrasted_image,
                         message="New image with contrast streched.",

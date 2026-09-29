@@ -7,6 +7,7 @@ from .channel_split import ChannelSplitTool
 from .channel_swap import ChannelSwap
 from .contrast_streching import ContrastStreching
 from .histogram import HistogramVisualization
+from .histogram_matching import HistogramMatching
 
 def build_tool_registry() -> ToolRegistry:
     return ToolRegistry(
@@ -16,7 +17,8 @@ def build_tool_registry() -> ToolRegistry:
             ChannelSplitTool(),
             ChannelSwap(),
             ContrastStreching(),
-            HistogramVisualization()
+            HistogramVisualization(),
+            HistogramMatching()
         ]
     )
 
