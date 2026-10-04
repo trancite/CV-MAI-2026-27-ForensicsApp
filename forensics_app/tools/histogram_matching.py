@@ -7,6 +7,7 @@ from tkinter import filedialog
 
 from forensics_app.core import ImageDocument
 from .base import ForensicsTool, ToolResult
+from utilities import dialog_options
 import numpy as np
 
 
