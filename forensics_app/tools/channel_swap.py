@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import tkinter as tk
-
 from PIL import ImageOps, Image
 from tkinter import simpledialog
 import tkinter as tk
