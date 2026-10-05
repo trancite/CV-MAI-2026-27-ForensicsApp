@@ -34,6 +34,7 @@ class Masking(ForensicsTool):
         masked_image_tensor = image_tensor * mask
         masked_image = Image.fromarray(masked_image_tensor)
         return ToolResult(
+             
             image=masked_image,
             message="Masked image.",
             details={"Threshold:":mask_value},
