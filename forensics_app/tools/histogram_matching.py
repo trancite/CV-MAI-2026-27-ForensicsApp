@@ -7,7 +7,8 @@ from tkinter import filedialog
 
 from forensics_app.core import ImageDocument
 from .base import ForensicsTool, ToolResult
-from utilities import dialog_options
+import skimage.exposure as exposure
+import skimage.color as color
 import numpy as np
 
 
@@ -16,16 +17,8 @@ class HistogramMatching(ForensicsTool):
         self.tool_id = "histogrammatching"
         self.title = "Histogram Matching"
         self.category = "Set2"
-        self.description = "Matchs histogram between two images"
+        self.description = "Matches histogram between two images"
         self.requires_image = True
-
-    def match_channel(self, src: np.ndarray, ref: np.ndarray) -> np.ndarray:
-        s_vals, s_inv, s_counts = np.unique(src.ravel(), return_inverse=True, return_counts=True)
-        r_vals, r_counts = np.unique(ref.ravel(), return_counts=True)
-        s_cdf = np.cumsum(s_counts) / src.size
-        r_cdf = np.cumsum(r_counts) / ref.size
-        mapped = np.interp(s_cdf, r_cdf, r_vals)   
-        return mapped[s_inv].reshape(src.shape)
 
     def run(self, parent: tk.Misc, document: ImageDocument) -> ToolResult | None:
         reference_path = filedialog.askopenfilename(
@@ -44,14 +37,28 @@ class HistogramMatching(ForensicsTool):
             reference = reference_image.copy()
 
         source = document.current
-        y, cb, cr = source.convert("YCbCr").split()
-        y_ref, _, _ = reference.convert("YCbCr").split()
 
-        y_new = np.rint(self.match_channel(np.array(y), np.array(y_ref))).astype(np.uint8)
-        new_image = Image.merge("YCbCr", (Image.fromarray(y_new), cb, cr)).convert("RGB")
+        
+        src_arr = np.asarray(source.convert("RGB"))
+        ref_arr = np.asarray(reference.convert("RGB"))
+
+        src_lab = color.rgb2lab(src_arr)
+        ref_lab = color.rgb2lab(ref_arr)
+
+        src_L = src_lab[:, :, 0]
+        ref_L = ref_lab[:, :, 0]
+
+        matched_L = exposure.match_histograms(src_L, ref_L)
+
+        matched_lab = src_lab.copy()
+        matched_lab[:, :, 0] = matched_L
+
+        matched_rgb = np.clip(color.lab2rgb(matched_lab), 0, 1)
+        
+        new_image = Image.fromarray((matched_rgb * 255).astype(np.uint8))
+
         return ToolResult(
             image=new_image,
             message="Matched the source histogram to the reference image.",
             details={"Operation": "Histogram matching", "Output mode": new_image.mode},
         )
-    

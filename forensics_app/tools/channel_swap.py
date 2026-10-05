@@ -7,6 +7,7 @@ import tkinter as tk
 from tkinter import ttk
 from forensics_app.core import ImageDocument
 from .base import ForensicsTool, ToolResult
+from .utilities import dialog_options
 import numpy as np
 
 class ChannelSwap(ForensicsTool):
@@ -16,13 +17,14 @@ class ChannelSwap(ForensicsTool):
         self.category = "Set2"
         self.description = "It swaps the (R, G, B) channels"
         self.requires_image = True
+        self.options = ["Red", "Green", "Blue"]
 
 
     def __choose_swap(self, parent: tk.Misc) -> list[int] | None:
-        first_color = simpledialog.askinteger("First color", "0 for Red, 1 for Green and 2 Blue", parent=parent)
+        first_color = dialog_options(parent, "Channel swap", "Choose the first channel", self.options)
         if first_color is None:
             return None
-        second_color = simpledialog.askinteger("Second color", "0 for Red, 1 for Green and 2 Blue", parent=parent)
+        second_color = dialog_options(parent, "Channel swap","Choose the second channel", self.options)
         if second_color is None:
             return None
         return [first_color, second_color]
@@ -33,6 +35,8 @@ class ChannelSwap(ForensicsTool):
         swap = self.__choose_swap(parent)
         if swap is None:
             return None
+        map_color_channel = {"Red": 0, "Green": 1, "Blue": 2}
+        swap = [map_color_channel[color] for color in swap]
         rgb_image = document.current.convert("RGB")
         image_tensor = np.array(rgb_image)
         image_tensor[:,:,swap] = image_tensor[:,:,swap[::-1]]

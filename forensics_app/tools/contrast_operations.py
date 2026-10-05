@@ -4,9 +4,10 @@ import tkinter as tk
 
 import numpy as np
 import skimage.exposure as exposure
+import skimage.color as color  # Añadimos la importación de color para el espacio LAB
 from PIL import Image, ImageOps
 from tkinter import simpledialog
-from skimage.util import img_as_float   # import nuevo
+from skimage.util import img_as_float
 from forensics_app.core import ImageDocument
 from .base import ForensicsTool, ToolResult
 from .utilities import dialog_options
@@ -59,25 +60,44 @@ class ContrastOperations(ForensicsTool):
         a, b = self._percentiles(img, cutoff)
         return exposure.rescale_intensity(img, in_range=(a, b), out_range="dtype")
 
+    def _apply_operation(self, parent: tk.Misc, operation: str, img: np.ndarray):
+        if operation == "Low contrast":
+            return self.contrast_decreased(parent, img)
+        elif operation == "Contrast Stretching":
+            return self.contrast_stretching(parent, img)
+        elif operation == "Histogram Equalization":
+            return exposure.equalize_hist(img)
+        elif operation == "Adaptive histogram equalization":
+            return exposure.equalize_adapthist(img, clip_limit=0.03)
+        return None
+
     def run(self, parent: tk.Misc, document: ImageDocument) -> ToolResult | None:
         image = document.current
         assert image is not None
-        img = img_as_float(np.asarray(ImageOps.grayscale(image)))
 
         operation = self._choose_operation(parent)
-        if operation == "Low contrast":
-            result = self.contrast_decreased(parent, img)
-        elif operation == "Contrast Stretching":
-            result = self.contrast_stretching(parent, img)
-        elif operation == "Histogram Equalization":
-            result = exposure.equalize_hist(img)
-        elif operation == "Adaptive histogram equalization":
-            result = exposure.equalize_adapthist(img, clip_limit = 0.03)
-        else:
-            return None  
-
-        if result is None: 
+        if not operation:
             return None
+
+        if image.mode == "L":
+            img = img_as_float(np.asarray(image))
+            result = self._apply_operation(parent, operation, img)
+            if result is None: return None
+            
+        else:
+            arr = np.asarray(image.convert("RGB"))
+            
+            lab = color.rgb2lab(arr)
+            
+            L = lab[:, :, 0] / 100.0
+            
+            L_processed = self._apply_operation(parent, operation, L)
+            if L_processed is None: return None
+            
+            lab_eq = lab.copy()
+            lab_eq[:, :, 0] = L_processed * 100.0
+            
+            result = np.clip(color.lab2rgb(lab_eq), 0, 1)
 
         new_image = self._to_pil(result)
         return ToolResult(
