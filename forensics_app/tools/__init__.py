@@ -9,6 +9,7 @@ from .contrast_operations import ContrastOperations
 from .histogram import HistogramVisualization
 from .histogram_matching import HistogramMatching
 from .masking import Masking
+from .masking import Masking
 
 def build_tool_registry() -> ToolRegistry:
     return ToolRegistry(
