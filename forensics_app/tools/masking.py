@@ -6,7 +6,7 @@ from tkinter import simpledialog
 import tkinter as tk
 from tkinter import ttk
 from forensics_app.core import ImageDocument
-from .base import ForensiddcsTool, ToolResult
+from .base import ForensicsTool, ToolResult
 import numpy as np
 
 class Masking(ForensicsTool):
