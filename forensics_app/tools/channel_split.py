@@ -11,6 +11,7 @@ from .base import ForensicsTool, ToolResult
 from .utilities import dialog_options
 import numpy as np
 
+
 class ChannelSplitTool(ForensicsTool):
     def __init__(self):
         self.tool_id = "channelsplit"
@@ -26,13 +27,12 @@ class ChannelSplitTool(ForensicsTool):
 
     
     def run(self, parent: tk.Misc, document: ImageDocument) -> ToolResult | None:
+        map_color_channel = {"Red": 0, "Green": 1, "Blue": 2}
         assert document.current is not None
         channel = self._choose_channel(parent)
         if channel is None:
             return None
-        if channel == "Red": channel = 0
-        elif channel == "Green": channel = 1
-        else: channel = 2
+        channel = map_color_channel[channel]
         rgb_image = document.current.convert("RGB")
         image_tensor = np.array(rgb_image)
         new_image = Image.fromarray(image_tensor[:,:,channel])

@@ -6,7 +6,7 @@ from tkinter import simpledialog
 import tkinter as tk
 from tkinter import ttk
 from forensics_app.core import ImageDocument
-from .base import ForensicsTool, ToolResult
+from .base import ForensiddcsTool, ToolResult
 import numpy as np
 
 class Masking(ForensicsTool):
@@ -19,12 +19,9 @@ class Masking(ForensicsTool):
 
     
     def __choose_mask(self, parent: tk.Misc) -> int | None:
-        mask_value = simpledialog.askinteger("Choose mask value (0-255)", parent=parent)
+        mask_value = simpledialog.askinteger(title = "Mask threshold", prompt="Choose a mask threshold", minvalue = 0, maxvalue=255, parent=parent)
         if mask_value is None:
                 return None
-        if mask_value not in range (0, 256):
-                print("Invalid value, please choose a value between 0 and 255")
-                return self.__choose_mask(parent)
         return mask_value   
                  
 
@@ -32,14 +29,15 @@ class Masking(ForensicsTool):
         mask_value = self.__choose_mask(parent)
         if mask_value is None:
             return None
-        mask = document.current > mask_value
-        masked_image = document.current * mask
-
+        image_tensor = np.array(document.current)
+        mask = image_tensor > mask_value
+        masked_image_tensor = image_tensor * mask
+        masked_image = Image.fromarray(masked_image_tensor)
         return ToolResult(
-            result=masked_image,
-            metadata={"mask": mask, "threshold": mask_value},
-            success=True
-)
+            image=masked_image,
+            message="Masked image.",
+            details={"Threshold:":mask_value},
+        )
 
 
             
