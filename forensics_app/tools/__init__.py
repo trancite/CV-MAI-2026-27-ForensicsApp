@@ -11,6 +11,7 @@ from .histogram_matching import HistogramMatching
 from .masking import Masking
 from .masking import Masking
 from .convolution import Convolution
+from .masking_superposition import  MaskingSuperposition
 
 def build_tool_registry() -> ToolRegistry:
     return ToolRegistry(
@@ -23,7 +24,10 @@ def build_tool_registry() -> ToolRegistry:
             HistogramVisualization(),
             HistogramMatching(),
             Masking(),
-            Convolution()
+            Convolution(),
+            MaskingSuperposition()
+
+
         ]
     )
 
