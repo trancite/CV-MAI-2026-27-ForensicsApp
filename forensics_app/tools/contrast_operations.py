@@ -47,7 +47,7 @@ class ContrastOperations(ForensicsTool):
         return Image.fromarray(arr)
 
     def contrast_decreased(self, parent: tk.Misc, img: np.ndarray):
-        cutoff = self._ask_cutoff(parent, "Percentage of pixels at the boundaries (defines the output range).")
+        cutoff = self._ask_cutoff(parent, "Choose the max and minimum intensity of the output image.")
         if cutoff is None:
             return None
         c, d = cutoff / 200, 1 - cutoff / 200
