@@ -10,6 +10,7 @@ from .histogram import HistogramVisualization
 from .histogram_matching import HistogramMatching
 from .masking import Masking
 from .masking import Masking
+from .convolution import Convolution
 
 def build_tool_registry() -> ToolRegistry:
     return ToolRegistry(
@@ -21,7 +22,8 @@ def build_tool_registry() -> ToolRegistry:
             ContrastOperations(),
             HistogramVisualization(),
             HistogramMatching(),
-            Masking()
+            Masking(),
+            Convolution()
         ]
     )
 
