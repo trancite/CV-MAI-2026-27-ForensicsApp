@@ -13,6 +13,7 @@ from .masking import Masking
 from .convolution import Convolution
 from .masking_superposition import  MaskingSuperposition
 from .filters import FiltersTool
+from .canny_edge import CannyEdge
 
 def build_tool_registry() -> ToolRegistry:
     return ToolRegistry(
@@ -27,7 +28,8 @@ def build_tool_registry() -> ToolRegistry:
             Masking(),
             Convolution(),
             MaskingSuperposition(),
-            FiltersTool()
+            FiltersTool(),
+            CannyEdge(),
 
 
         ]

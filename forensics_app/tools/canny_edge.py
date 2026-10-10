@@ -32,9 +32,9 @@ class CannyEdge(ForensicsTool):
                                                "Choose a Canny Edge Detection Type", self.options)
     
     def __choose_value(self, parent: tk.Misc) -> tuple[float, float] | None:
-        low_thr = simpledialog.askfloat(title = "Low threshold (0-1)", prompt="Choose a low threshold", minvalue = 0.0, maxvalue=1.0, parent=parent)
+        low_thr = simpledialog.askfloat(title = "Low threshold", prompt="Choose a low threshold (0-1)", minvalue = 0.0, maxvalue=1.0, parent=parent)
         
-        high_thr  = simpledialog.askfloat(title = "High threshold (0-1)", prompt="Choose a high threshold", minvalue = low_thr, maxvalue=1.0, parent=parent)
+        high_thr  = simpledialog.askfloat(title = "High threshold", prompt="Choose a high threshold (0-1)", minvalue = low_thr, maxvalue=1.0, parent=parent)
         
         return low_thr, high_thr
     
@@ -60,9 +60,9 @@ class CannyEdge(ForensicsTool):
                 return None
             low_thr, high_thr = thresholds
             edges = canny(gray, low_threshold=low_thr, high_threshold=high_thr,sigma=2.0) 
-
+        output_image = Image.fromarray((edges * 255).astype(np.uint8))
         return ToolResult(
-            image=(edges*255).astype(np.uint8),
+            image=output_image,
             message="Canny edge detection applied.",
         )
 
