@@ -41,9 +41,9 @@ class MaskingSuperposition(ForensicsTool):
         src_arr = np.asarray(src)
         ref_arr = np.asarray(reference.convert("RGB"))
 
-        mask = (src_arr == 0)
+        mask = (ref_arr == 0)
 
-        new_arr = np.where(mask, ref_arr, src_arr)
+        new_arr = np.where(mask, src_arr, ref_arr)
 
         new_arr = new_arr.astype(np.uint8)
 

@@ -29,7 +29,7 @@ class Convolution(ForensicsTool):
             "Prewitt"
         ]
 
-        self.directions = ["2D", "Vertical", "Horizontal"]
+        self.directions = ["2D", "Vertical edges", "Horizontal edges"]
 
 
     def _choose_kernel(self, parent: tk.Misc) -> str | None:
@@ -67,13 +67,13 @@ class Convolution(ForensicsTool):
 
     def _generate_directions_kernel(self, direction: str, kernel: str) -> np.ndarray:
         if kernel == "sobel":
-            if direction.lower() == "vertical":
+            if direction.lower() == "vertical edges":
                 return np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
             else:
                 return np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
             
         elif kernel.lower() == "prewitt":
-            if direction.lower() == "vertical":
+            if direction.lower() == "vertical edges":
                 return np.array([[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]])
             else:
                 return np.array([[1, 1, 1], [0, 0, 0], [-1, -1, -1]])
@@ -81,12 +81,11 @@ class Convolution(ForensicsTool):
     def _generate_laplacian_kernel(self) -> np.ndarray:
         return np.array([[0, 1, 0], [1, -4, 1], [0, 1, 0]])
 
+
     def run(self, parent, document):
         image = document.current
         assert image is not None
         arr = np.asarray(image)
-
-        
 
         choice = self._choose_kernel(parent)
         
