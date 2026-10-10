@@ -4,7 +4,7 @@ import tkinter as tk
 
 import numpy as np
 import skimage.exposure as exposure
-import skimage.color as color  
+import skimage.color as color 
 from PIL import Image, ImageOps
 from tkinter import simpledialog
 from skimage.util import img_as_float
@@ -17,12 +17,12 @@ from skimage.feature import canny
 
 
 
-class CannyEdge(ForensicsTool):
+class CannyEdgeVisualization(ForensicsTool):
     def __init__(self):
-            self.tool_id = "cannyedge"
-            self.title = "Canny Edge Detection"
+            self.tool_id = "cannyedgevisualization"
+            self.title = "Canny Edge Visualization"
             self.category = "Set3"
-            self.description = "Detect edges with the Canny edge detection algorithm."
+            self.description = "Visualize edges from the Canny edge detection algorithm."
             self.requires_image = True
             self.options = ["Regular", "Sigma 2", "With Thresholds"]
 
@@ -41,13 +41,15 @@ class CannyEdge(ForensicsTool):
 
     def run(self, parent: tk.Misc, document: ImageDocument) -> ToolResult:
         assert document.current is not None 
-        img = document.current 
+        img = document.current
         arr = np.asarray(img)
-        edge_type = self.__choose_type(parent)
+
         if arr.ndim == 3:
             gray = color.rgb2gray(arr)
         else:
             gray = arr
+
+        edge_type = self.__choose_type(parent)
 
         if edge_type is None:
             return None
@@ -63,10 +65,20 @@ class CannyEdge(ForensicsTool):
                 return None
             low_thr, high_thr = thresholds
             edges = canny(gray, low_threshold=low_thr, high_threshold=high_thr,sigma=2.0) 
-        output_image = Image.fromarray((edges * 255).astype(np.uint8))
+
+        arr = np.asarray(img)
+        overlay = arr.copy()
+        overlay = arr.copy()
+
+        if overlay.ndim == 2:
+            overlay = np.stack([overlay, overlay, overlay], axis=-1)
+        
+        overlay[edges] = [255,0,0]
+
         return ToolResult(
-            image=output_image,
-            message="Canny edge detection applied.",
+            image=Image.fromarray(overlay),
+            message="Canny edge detection visualization applied."
         )
+
 
     
