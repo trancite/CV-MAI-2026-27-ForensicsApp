@@ -15,6 +15,7 @@ from .masking_superposition import  MaskingSuperposition
 from .filters import FiltersTool
 from .canny_edge import CannyEdge
 from .canny_edge_visualization import CannyEdgeVisualization
+from .sharpening import Sharpening
 
 def build_tool_registry() -> ToolRegistry:
     return ToolRegistry(
@@ -32,6 +33,7 @@ def build_tool_registry() -> ToolRegistry:
             FiltersTool(),
             CannyEdge(),
             CannyEdgeVisualization(),
+            Sharpening(),
         ]
     )
 
