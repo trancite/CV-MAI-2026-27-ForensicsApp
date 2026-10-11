@@ -1,3 +1,4 @@
+from __future__ import annotations
 import numpy as np
 import skimage.exposure as exposure
 import skimage.color as color 
@@ -17,7 +18,6 @@ import tkinter as tk
 
 
 
-
 class Sharpening(ForensicsTool):
     def __init__(self):
             self.tool_id = "sharpening"
@@ -26,10 +26,10 @@ class Sharpening(ForensicsTool):
             self.description = "Apply sharpening to the image."
             self.requires_image = True
   
-    def __choose_value(self, parent: tk.Misc) -> tuple[float, float] | None:
-        radius = simpledialog.askfloat(title = "Radius", prompt="Choose a Radius (0.5-10)", minvalue = 0.5, maxvalue=10.0, parent=parent)
+    def __choose_value(self, parent: tk.Misc) -> tuple | None:
+        radius = simpledialog.askfloat(title="Radius", prompt="Choose a radius (0.5-10).", minvalue=0.5, maxvalue=10.0, parent=parent)
         
-        amount  = simpledialog.askfloat(title = "Amount", prompt="Choose an amount (0.1-5)", minvalue = 0.1, maxvalue=5.0, parent=parent)
+        amount = simpledialog.askfloat(title="Amount", prompt="Choose an amount (0.1-5).", minvalue=0.1, maxvalue=5.0, parent=parent)
         
         return radius, amount
 

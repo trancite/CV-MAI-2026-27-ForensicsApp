@@ -13,9 +13,9 @@ import numpy as np
 class ChannelSwap(ForensicsTool):
     def __init__(self):
         self.tool_id = "channelswap"
-        self.title = "Channel Swap"
+        self.title = "Channel swapping"
         self.category = "Set2"
-        self.description = "It swaps the (R, G, B) channels"
+        self.description = "Swap two RGB channels."
         self.requires_image = True
         self.options = ["Red", "Green", "Blue"]
 
@@ -43,7 +43,7 @@ class ChannelSwap(ForensicsTool):
         new_image = Image.fromarray(image_tensor)
         return ToolResult(
                             image=new_image,
-                            message="New image with swapped channels.",
+                            message="Created an image with swapped channels.",
                             details={"Operation": "Channel swap", "Output mode": new_image.mode},
                         )
 

@@ -15,9 +15,9 @@ from .utilities import dialog_options
 class FiltersTool(ForensicsTool):
     def __init__(self):
         self.tool_id = "filters"
-        self.title = "Different filters"
+        self.title = "Filters"
         self.category = "Set3"
-        self.description = "Different filters from skimage.filters to apply"
+        self.description = "Apply filters from skimage.filters."
         self.requires_image = True
         self.filter_options = [
             "Smoothing/noise reduction",
@@ -39,12 +39,12 @@ class FiltersTool(ForensicsTool):
                               self.mask_options)
 
     def _choose_sigma(self, parent: tk.Misc):
-        return simpledialog.askfloat("Sigma", "Choose sd", initialvalue=2.0,
+        return simpledialog.askfloat("Sigma", "Choose the standard deviation", initialvalue=2.0,
                                      minvalue=0.1, maxvalue=100.0, parent=parent)
 
     def _choose_amount(self, parent: tk.Misc):
         return simpledialog.askfloat("Intensity of details augmentation",
-                                     "Choose amount of details increasing", initialvalue=1.0,
+                                     "Choose the amount of detail enhancement", initialvalue=1.0,
                                      minvalue=0.1, maxvalue=20.0, parent=parent)
 
     @staticmethod

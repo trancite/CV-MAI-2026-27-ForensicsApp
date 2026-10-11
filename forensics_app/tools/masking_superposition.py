@@ -12,14 +12,14 @@ from .base import ForensicsTool, ToolResult
 class MaskingSuperposition(ForensicsTool):
     def __init__(self):
         self.tool_id = "masking superposition"
-        self.title = "Masking Superposition"
+        self.title = "Mask superposition"
         self.category = "Set2"
-        self.description = "Superpose two images"
+        self.description = "Superimpose two images."
         self.requires_image = True
 
     def run(self, parent: tk.Misc, document: ImageDocument) -> ToolResult | None:
         reference_path = filedialog.askopenfilename(
-            title="Select image to superpose",
+            title="Select an image to superimpose",
             filetypes=[
                 ("Image files", "*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.webp"),
                 ("All files", "*.*"),
@@ -53,10 +53,9 @@ class MaskingSuperposition(ForensicsTool):
 
         return ToolResult(
             image=new_image,
-            message="Superposed image.",
+            message="Images superimposed.",
             details={"Output mode": new_image.mode, "Reference resized": True},
         )
-
 
 
 

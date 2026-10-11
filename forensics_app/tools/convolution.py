@@ -19,7 +19,7 @@ class Convolution(ForensicsTool):
         self.tool_id = "convolution"
         self.title = "Convolution"
         self.category = "Set3"
-        self.description = "Different kernels, directions and convolutions to apply"
+        self.description = "Apply different kernels and convolution directions."
         self.requires_image = True
         self.kernel_options = [
             "Average",
@@ -56,7 +56,7 @@ class Convolution(ForensicsTool):
         return array / array.sum()
 
     def _choose_sigma(self, parent):
-        return simpledialog.askfloat("Sigma", "Choose sd for the gaussian kernel", minvalue=0.1, maxvalue=1e9, parent=parent)
+        return simpledialog.askfloat("Sigma", "Choose the standard deviation for the Gaussian kernel", minvalue=0.1, maxvalue=1e9, parent=parent)
 
     def _generate_gaussian_kernel(self, size_x, size_y, sigma):
         x = np.arange(size_x) - (size_x - 1) / 2
@@ -151,7 +151,7 @@ class Convolution(ForensicsTool):
         new_image = Image.fromarray(np.clip(out, 0, 255).astype(np.uint8))
         return ToolResult(
             image=new_image,
-            message="Result.",
+            message="Convolution applied.",
             details={"Operation": f"Applied kernel {kernel}", "Output mode": new_image.mode},
         )
 

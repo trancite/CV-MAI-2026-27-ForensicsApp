@@ -16,7 +16,7 @@ class Masking(ForensicsTool):
         self.tool_id = "masking"
         self.title = "Masking"
         self.category = "Set2"
-        self.description = "It applies a mask to the image"
+        self.description = "Apply a mask to the image."
         self.requires_image = True
         self.options = ["Binary", "Inverse", "Range"]
 

@@ -16,9 +16,9 @@ from .utilities import dialog_options
 class ContrastOperations(ForensicsTool):
     def __init__(self):
         self.tool_id = "contrastoperations"
-        self.title = "Contrast Operations"
+        self.title = "Contrast operations"
         self.category = "Set2"
-        self.description = "Various operations regarding contrast"
+        self.description = "Apply different contrast operations."
         self.requires_image = True
         self.options = [
             "Low contrast",

@@ -15,11 +15,11 @@ from .utilities import dialog_options
 class HistogramVisualization(ForensicsTool):
     def __init__(self):
         self.tool_id = "histogramvisualization"
-        self.title = "Histogram Visualization"
+        self.title = "Histogram visualization"
         self.category = "Set2"
-        self.description = "Visualize histogram of channels"
+        self.description = "Visualize the image histogram."
         self.requires_image = True
-        self.options = ["Default", "Luminostiy"]
+        self.options = ["Default", "Luminosity"]
 
     def __choose_histogram(self, parent: tk.Misc):
         return  dialog_options(parent, "Histogram selection", "Choose one type of histogram", self.options)
@@ -40,7 +40,7 @@ class HistogramVisualization(ForensicsTool):
         plt.hist(image_array.ravel(), bins=256, color="grey", range=(0, 256), alpha=0.8)
         plt.xlabel("Intensity")
         plt.ylabel("Frequency")
-        plt.title("Greyscale histogram")
+        plt.title("Grayscale histogram")
 
     def histogram_luminosity(self, image_array: np.ndarray) -> None:
         plt.hist(image_array.ravel(), bins=256, color="grey", range=(0, 100), alpha=0.8)
@@ -58,7 +58,7 @@ class HistogramVisualization(ForensicsTool):
             return None
 
         plt.figure("Image histogram")
-        if option == "Luminostiy":
+        if option == "Luminosity":
             rgb_array = np.asarray(image.convert("RGB"))
             lab_array = color.rgb2lab(rgb_array)
             self.histogram_luminosity(lab_array[:, :, 0])
@@ -83,5 +83,4 @@ class HistogramVisualization(ForensicsTool):
                 "Size": f"{image.width} x {image.height}",
             },
         )
-
 

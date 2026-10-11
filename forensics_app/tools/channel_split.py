@@ -15,9 +15,9 @@ import numpy as np
 class ChannelSplitTool(ForensicsTool):
     def __init__(self):
         self.tool_id = "channelsplit"
-        self.title = "Channel Split"
+        self.title = "Channel splitting"
         self.category = "Set2"
-        self.description = "It allows splitting the image in three different channels"
+        self.description = "Split the image into its three color channels."
         self.requires_image = True
         self.options = ["Red", "Green", "Blue"]
 
@@ -38,6 +38,6 @@ class ChannelSplitTool(ForensicsTool):
         new_image = Image.fromarray(image_tensor[:,:,channel])
         return ToolResult(
                     image=new_image,
-                    message=f"New image showing the {channel}th channel.",
+                    message=f"New image showing channel {channel + 1}.",
                     details={"Operation": "Channel split", "Output mode": new_image.mode},
                 )

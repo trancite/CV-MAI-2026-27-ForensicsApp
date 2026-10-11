@@ -9,12 +9,10 @@ from .contrast_operations import ContrastOperations
 from .histogram import HistogramVisualization
 from .histogram_matching import HistogramMatching
 from .masking import Masking
-from .masking import Masking
 from .convolution import Convolution
 from .masking_superposition import  MaskingSuperposition
 from .filters import FiltersTool
 from .canny_edge import CannyEdge
-from .canny_edge_visualization import CannyEdgeVisualization
 from .sharpening import Sharpening
 
 def build_tool_registry() -> ToolRegistry:
@@ -32,7 +30,6 @@ def build_tool_registry() -> ToolRegistry:
             MaskingSuperposition(),
             FiltersTool(),
             CannyEdge(),
-            CannyEdgeVisualization(),
             Sharpening(),
         ]
     )
