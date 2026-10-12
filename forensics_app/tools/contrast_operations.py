@@ -32,7 +32,7 @@ class ContrastOperations(ForensicsTool):
                               "Choose a contrast operation", self.options)
 
     def _ask_cutoff(self, parent: tk.Misc, text: str) -> float | None:
-        return simpledialog.askfloat("Cutoff", text, minvalue=0.0,
+        return simpledialog.askfloat("Cutoff", f"{text}\nEnter a percentage from 0 to 100 (inclusive).", minvalue=0.0,
                                      maxvalue=100.0, parent=parent)
 
     @staticmethod
@@ -47,14 +47,26 @@ class ContrastOperations(ForensicsTool):
         return Image.fromarray(arr)
 
     def contrast_decreased(self, parent: tk.Misc, img: np.ndarray):
-        cutoff = self._ask_cutoff(parent, "Choose the max and minimum intensity of the output image.")
+        cutoff = self._ask_cutoff(
+            parent,
+            "How much should the output brightness range be reduced?\n"
+            "The reduction is split equally between the dark and bright ends.\n"
+            "Example: 20 reduces the output range to 10%-90% brightness.\n"
+            "0 uses the full range; 100 sets every pixel to midpoint brightness.",
+        )
         if cutoff is None:
             return None
         c, d = cutoff / 200, 1 - cutoff / 200
         return exposure.rescale_intensity(img, in_range="image", out_range=(c, d))
 
     def contrast_stretching(self, parent: tk.Misc, img: np.ndarray):
-        cutoff = self._ask_cutoff(parent, "Percentage of pixels at the boundaries (defines the input range).")
+        cutoff = self._ask_cutoff(
+            parent,
+            "What total percentage should be clipped from the dark and bright ends?\n"
+            "Half is clipped from each end; the remaining range is stretched to full brightness.\n"
+            "Example: 10 maps the 5th percentile to black and the 95th to white.\n"
+            "0 uses the minimum and maximum brightness.",
+        )
         if cutoff is None:
             return None
         a, b = self._percentiles(img, cutoff)

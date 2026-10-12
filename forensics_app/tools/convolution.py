@@ -30,23 +30,25 @@ class Convolution(ForensicsTool):
         ]
 
         self.directions = ["2D", "Vertical edges", "Horizontal edges"]
+        self.smoothing_directions = ["2D", "Vertical", "Horizontal"]
 
 
     def _choose_kernel(self, parent: tk.Misc) -> str | None:
         return  dialog_options(parent, "Kernel selection", "Choose one of the following kernels", self.kernel_options)
 
 
-    def _choose_direction(self, parent: tk.Misc) -> str | None:
-        return dialog_options(parent, "Direction selection", "Choose the direction of the kernel", self.directions)
+    def _choose_direction(self, parent: tk.Misc, smoothing: bool = False) -> str | None:
+        options = self.smoothing_directions if smoothing else self.directions
+        return dialog_options(parent, "Direction selection", "Choose the direction of the kernel", options)
 
     def _choose_size(self, parent: tk.Misc, length_x: int, length_y: int, direction: str) -> tuple | None:
         size_x = size_y = 1
         if direction != "Vertical":
-            size_x = simpledialog.askinteger("Size", "Horizontal size of the kernel",
+            size_x = simpledialog.askinteger("Size", f"Horizontal kernel size: integer from 1 to {length_x} (inclusive).",
                                             minvalue=1, maxvalue=length_x, parent=parent)
             if size_x is None: return None
         if direction != "Horizontal":
-            size_y = simpledialog.askinteger("Size", "Vertical size of the kernel",
+            size_y = simpledialog.askinteger("Size", f"Vertical kernel size: integer from 1 to {length_y} (inclusive).",
                                             minvalue=1, maxvalue=length_y, parent=parent)
             if size_y is None: return None
         return size_x, size_y
@@ -56,7 +58,7 @@ class Convolution(ForensicsTool):
         return array / array.sum()
 
     def _choose_sigma(self, parent):
-        return simpledialog.askfloat("Sigma", "Choose the standard deviation for the Gaussian kernel", minvalue=0.1, maxvalue=1e9, parent=parent)
+        return simpledialog.askfloat("Sigma", "Gaussian standard deviation: number from 0.1 to 1,000,000,000 (inclusive).", minvalue=0.1, maxvalue=1e9, parent=parent)
 
     def _generate_gaussian_kernel(self, size_x, size_y, sigma):
         x = np.arange(size_x) - (size_x - 1) / 2
@@ -66,7 +68,7 @@ class Convolution(ForensicsTool):
         return K / K.sum()
 
     def _generate_directions_kernel(self, direction: str, kernel: str) -> np.ndarray:
-        if kernel == "sobel":
+        if kernel.lower() == "sobel":
             if direction.lower() == "vertical edges":
                 return np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
             else:
@@ -96,7 +98,7 @@ class Convolution(ForensicsTool):
             length_y, length_x = arr.shape 
             has_color = False
         else:
-            if image.mode == 'RGBA':
+            if image.mode not in ("L", "RGB"):
                 image = image.convert('RGB')
             arr = np.asarray(image, dtype=np.float64)
             has_color = len(arr.shape) == 3
@@ -108,7 +110,7 @@ class Convolution(ForensicsTool):
                 channels = 1
 
         if kernel in ("average", "gaussian"):
-            direction = self._choose_direction(parent)
+            direction = self._choose_direction(parent, smoothing=True)
 
             if not direction: return None
 
@@ -137,8 +139,8 @@ class Convolution(ForensicsTool):
             direction = self._choose_direction(parent)
             if not direction: return None
             if direction == "2D":   
-                gx = ndimage.convolve(arr, self._generate_directions_kernel("horizontal", kernel))
-                gy = ndimage.convolve(arr, self._generate_directions_kernel("vertical", kernel))
+                gx = ndimage.convolve(arr, self._generate_directions_kernel("horizontal edges", kernel))
+                gy = ndimage.convolve(arr, self._generate_directions_kernel("vertical edges", kernel))
                 out = np.hypot(gx, gy)
             else:
                 out = np.abs(ndimage.convolve(arr, self._generate_directions_kernel(direction, kernel)))

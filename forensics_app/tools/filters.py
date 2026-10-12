@@ -35,16 +35,16 @@ class FiltersTool(ForensicsTool):
 
     def _choose_mask(self, parent: tk.Misc):
         return dialog_options(parent, "Mask selection",
-                              "Choose to see near objects (binary) or background (inverse)",
+                              "Binary keeps pixels brighter than the Otsu threshold; Inverse keeps pixels at or below it.",
                               self.mask_options)
 
     def _choose_sigma(self, parent: tk.Misc):
-        return simpledialog.askfloat("Sigma", "Choose the standard deviation", initialvalue=2.0,
+        return simpledialog.askfloat("Sigma", "Standard deviation: number from 0.1 to 100 (inclusive).", initialvalue=2.0,
                                      minvalue=0.1, maxvalue=100.0, parent=parent)
 
     def _choose_amount(self, parent: tk.Misc):
         return simpledialog.askfloat("Intensity of details augmentation",
-                                     "Choose the amount of detail enhancement", initialvalue=1.0,
+                                     "Detail enhancement amount: number from 0.1 to 20 (inclusive).", initialvalue=1.0,
                                      minvalue=0.1, maxvalue=20.0, parent=parent)
 
     @staticmethod

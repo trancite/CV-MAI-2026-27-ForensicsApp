@@ -15,9 +15,9 @@ import numpy as np
 class HistogramMatching(ForensicsTool):
     def __init__(self):
         self.tool_id = "histogrammatching"
-        self.title = "Histogram Matching"
+        self.title = "Lightness histogram matching"
         self.category = "Set2"
-        self.description = "Matches histogram between two images"
+        self.description = "Match the Lab lightness histogram to a reference image, retaining the source a* and b* channels."
         self.requires_image = True
 
     def run(self, parent: tk.Misc, document: ImageDocument) -> ToolResult | None:
@@ -59,6 +59,6 @@ class HistogramMatching(ForensicsTool):
 
         return ToolResult(
             image=new_image,
-            message="Matched the source histogram to the reference image.",
-            details={"Operation": "Histogram matching", "Output mode": new_image.mode},
+            message="Matched the source Lab lightness histogram to the reference image.",
+            details={"Operation": "Lightness histogram matching", "Output mode": new_image.mode},
         )

@@ -7,7 +7,7 @@ name = "forensics-app"
 version = "0.1.0"
 description = "Extensible Tkinter starter for an MSc Computer Vision course"
 requires-python = ">=3.10"
-dependencies = ["Pillow>=10.0,<13"]
+dependencies = ["Pillow>=10.0,<13", "numpy", "scipy", "scikit-image", "matplotlib"]
 
 [tool.setuptools.packages.find]
 include = ["forensics_app*"]

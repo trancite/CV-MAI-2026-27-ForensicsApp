@@ -1,1 +1,5 @@
 Pillow>=10.0,<13
+numpy
+scipy
+scikit-image
+matplotlib

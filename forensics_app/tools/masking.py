@@ -25,7 +25,7 @@ class Masking(ForensicsTool):
                                            "Choose a Mask", self.options)
 
     def __choose_value(self, parent: tk.Misc) -> int | None:
-        mask_value = simpledialog.askinteger(title = "Mask value (0-255)", prompt="Choose a mask threshold", minvalue = 0, maxvalue=255, parent=parent)
+        mask_value = simpledialog.askinteger(title = "Mask value (0-255)", prompt="Mask threshold: integer from 0 to 255 (inclusive).", minvalue = 0, maxvalue=255, parent=parent)
         if mask_value is None:
                 return None
         return mask_value   
@@ -36,9 +36,15 @@ class Masking(ForensicsTool):
         if mask_type is None:
             return None
         
+        image = document.current
+        assert image is not None
+        if image.mode not in ("L", "RGB"):
+            image = image.convert("RGB")
+
         if mask_type == "Binary":
-            image_tensor = np.array(document.current)
+            image_tensor = np.array(image)
             mask_value = self.__choose_value(parent)
+            if mask_value is None: return None
             mask = image_tensor > mask_value
             masked_image_tensor = image_tensor * mask
             masked_image = Image.fromarray(masked_image_tensor)
@@ -50,8 +56,9 @@ class Masking(ForensicsTool):
             )
         
         elif mask_type == "Inverse":
-            image_tensor = np.array(document.current)
+            image_tensor = np.array(image)
             mask_value = self.__choose_value(parent)
+            if mask_value is None: return None
             mask = image_tensor <= mask_value
             masked_image_tensor = image_tensor * mask
             masked_image = Image.fromarray(masked_image_tensor)
@@ -63,11 +70,12 @@ class Masking(ForensicsTool):
             )
 
         elif mask_type == "Range":
-            low = simpledialog.askinteger(title = "Lower value", prompt="Choose a lower value (0-255)", minvalue = 0, maxvalue=255, parent=parent)
-            high = simpledialog.askinteger(title = "Upper value", prompt="Choose an upper value (Lower value-255)", minvalue = low, maxvalue=255, parent=parent)
+            low = simpledialog.askinteger(title = "Lower value", prompt="Lower value: integer from 0 to 255 (inclusive).", minvalue = 0, maxvalue=255, parent=parent)
+            if low is None: return None
+            high = simpledialog.askinteger(title = "Upper value", prompt=f"Upper value: integer from {low} to 255 (inclusive).", minvalue = low, maxvalue=255, parent=parent)
             if low is None or high is None:
                 return None
-            image_tensor = np.array(document.current)
+            image_tensor = np.array(image)
             mask = ((image_tensor >= low) & (image_tensor <= high))
             masked_image_tensor = image_tensor * mask
             masked_image = Image.fromarray(masked_image_tensor)

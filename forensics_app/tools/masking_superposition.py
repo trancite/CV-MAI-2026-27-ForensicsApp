@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import tkinter as tk
-from PIL import ImageOps, Image
-from tkinter import simpledialog, filedialog
+from PIL import Image
+from tkinter import filedialog
 import numpy as np
 
 from forensics_app.core import ImageDocument
 from .base import ForensicsTool, ToolResult
+from .utilities import dialog_options
 
 
 class MaskingSuperposition(ForensicsTool):
@@ -16,8 +17,16 @@ class MaskingSuperposition(ForensicsTool):
         self.category = "Set2"
         self.description = "Superimpose two images."
         self.requires_image = True
+        self.options = ["Put over an image", "Change texture"]
+
+    def _choose_mask_option(self, parent: tk.Misc) -> str | None:
+        return dialog_options(parent, "Mask superposition",
+                              "Choose how to use the mask", self.options)
 
     def run(self, parent: tk.Misc, document: ImageDocument) -> ToolResult | None:
+        option = self._choose_mask_option(parent)
+        if option is None: return None
+
         reference_path = filedialog.askopenfilename(
             title="Select an image to superimpose",
             filetypes=[
@@ -26,37 +35,33 @@ class MaskingSuperposition(ForensicsTool):
             ],
             parent=parent,
         )
-        if not reference_path:
-            return None
+        if not reference_path: return None
 
         assert document.current is not None
 
         with Image.open(reference_path) as reference_image:
             reference = reference_image.copy()
 
-        src = document.current.convert("RGB")
-
-        reference = reference.resize(src.size, Image.BILINEAR)
-
-        src_arr = np.asarray(src)
-        ref_arr = np.asarray(reference.convert("RGB"))
-
-        mask = (ref_arr == 0)
-
-        new_arr = np.where(mask, src_arr, ref_arr)
-
-        new_arr = new_arr.astype(np.uint8)
-
-        new_arr = np.clip(new_arr, 0, 255).astype(np.uint8)
-
-        new_image = Image.fromarray(new_arr)
+        if option == self.options[0]:
+            source = document.current
+            resized = reference.size != source.size
+            reference = reference.convert("RGB").resize(source.size, Image.Resampling.BILINEAR)
+            src_arr = np.asarray(source.convert("RGB"))
+            ref_arr = np.asarray(reference)
+            mask = np.all(ref_arr == 0, axis=-1, keepdims=True)
+            new_image = Image.fromarray(np.where(mask, src_arr, ref_arr).astype(np.uint8))
+        
+        else:
+            source = document.current
+            resized = reference.size != source.size
+            reference = reference.convert("RGB").resize(source.size, Image.Resampling.BILINEAR)
+            src_arr = np.asarray(source.convert("RGB"))
+            ref_arr = np.asarray(reference)
+            mask = np.any(src_arr != 0, axis=-1, keepdims=True)
+            new_image = Image.fromarray(np.where(mask, ref_arr, src_arr).astype(np.uint8))
 
         return ToolResult(
             image=new_image,
             message="Images superimposed.",
-            details={"Output mode": new_image.mode, "Reference resized": True},
+            details={"Output mode": new_image.mode, "Reference resized": resized},
         )
-
-
-
-
