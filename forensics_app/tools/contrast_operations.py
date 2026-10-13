@@ -59,6 +59,7 @@ class ContrastOperations(ForensicsTool):
         c, d = cutoff / 200, 1 - cutoff / 200
         return exposure.rescale_intensity(img, in_range=(0,1), out_range=(c, d))
 
+
     def contrast_stretching(self, parent: tk.Misc, img: np.ndarray):
         cutoff = self._ask_cutoff(
             parent,
