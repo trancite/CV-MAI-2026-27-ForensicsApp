@@ -52,12 +52,12 @@ class ContrastOperations(ForensicsTool):
             "How much should the output brightness range be reduced?\n"
             "The reduction is split equally between the dark and bright ends.\n"
             "Example: 20 reduces the output range to 10%-90% brightness.\n"
-            "0 uses the full range; 100 sets every pixel to midpoint brightness.",
+            "0 leaves the image unchanged; 100 sets every pixel to midpoint brightness.",
         )
         if cutoff is None:
             return None
         c, d = cutoff / 200, 1 - cutoff / 200
-        return exposure.rescale_intensity(img, in_range="image", out_range=(c, d))
+        return exposure.rescale_intensity(img, in_range=(0.0,1.0), out_range=(c, d))
 
     def contrast_stretching(self, parent: tk.Misc, img: np.ndarray):
         cutoff = self._ask_cutoff(
