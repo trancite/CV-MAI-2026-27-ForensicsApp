@@ -45,9 +45,16 @@ class Masking(ForensicsTool):
             image_tensor = np.array(image)
             mask_value = self.__choose_value(parent)
             if mask_value is None: return None
-            mask = image_tensor > mask_value
-            masked_image_tensor = image_tensor * mask
-            masked_image = Image.fromarray(masked_image_tensor)
+            gray = np.array(image.convert("L"))
+            mask = gray > mask_value
+            if image_tensor.ndim == 3:
+                mask = mask[..., None]
+                masked_image_tensor = image_tensor * mask
+                masked_image = Image.fromarray(masked_image_tensor)
+            else:
+                masked_image_tensor = mask.astype(np.uint8) * 255
+                masked_image = Image.fromarray(masked_image_tensor)
+
 
             return ToolResult(
             image=masked_image,
@@ -59,9 +66,15 @@ class Masking(ForensicsTool):
             image_tensor = np.array(image)
             mask_value = self.__choose_value(parent)
             if mask_value is None: return None
-            mask = image_tensor <= mask_value
-            masked_image_tensor = image_tensor * mask
-            masked_image = Image.fromarray(masked_image_tensor)
+            gray = np.array(image.convert("L"))
+            mask = gray <= mask_value
+            if image_tensor.ndim == 3:
+                mask = mask[..., None]
+                masked_image_tensor = image_tensor * mask
+                masked_image = Image.fromarray(masked_image_tensor)
+            else:
+                masked_image_tensor = mask.astype(np.uint8) * 255
+                masked_image = Image.fromarray(masked_image_tensor)
 
             return ToolResult(
             image=masked_image,
@@ -76,7 +89,9 @@ class Masking(ForensicsTool):
             if low is None or high is None:
                 return None
             image_tensor = np.array(image)
-            mask = ((image_tensor >= low) & (image_tensor <= high))
+            gray = np.array(image.convert("L"))
+            mask = ((gray >= low) & (gray <= high))
+            if image_tensor.ndim == 3: mask = mask[..., None]
             masked_image_tensor = image_tensor * mask
             masked_image = Image.fromarray(masked_image_tensor)
 
