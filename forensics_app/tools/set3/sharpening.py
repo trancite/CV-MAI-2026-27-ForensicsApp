@@ -6,8 +6,8 @@ from PIL import Image, ImageOps
 from tkinter import simpledialog
 from skimage.util import img_as_float
 from forensics_app.core import ImageDocument
-from .base import ForensicsTool, ToolResult
-from .utilities import dialog_options
+from ..base import ForensicsTool, ToolResult
+from ..utilities import dialog_options
 import numpy as np
 from scipy import ndimage
 from skimage.feature import canny

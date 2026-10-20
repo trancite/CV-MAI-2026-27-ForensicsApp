@@ -6,8 +6,8 @@ from tkinter import filedialog
 import numpy as np
 
 from forensics_app.core import ImageDocument
-from .base import ForensicsTool, ToolResult
-from .utilities import dialog_options
+from ..base import ForensicsTool, ToolResult
+from ..utilities import dialog_options
 
 
 class MaskingSuperposition(ForensicsTool):

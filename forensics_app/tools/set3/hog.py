@@ -8,8 +8,8 @@ import numpy as np
 from skimage.feature import hog
 from skimage import exposure
 from forensics_app.core import ImageDocument
-from .base import ForensicsTool, ToolResult
-from .utilities import dialog_options
+from ..base import ForensicsTool, ToolResult
+from ..utilities import dialog_options
 
 class HOGTool(ForensicsTool):
     def __init__(self):

@@ -3,18 +3,19 @@
 from .grayscale import GrayscaleTool
 from .image_info import ImageInfoTool
 from .registry import ToolRegistry
-from .channel_split import ChannelSplitTool
-from .channel_swap import ChannelSwap
-from .contrast_operations import ContrastOperations
-from .histogram import HistogramVisualization
-from .histogram_matching import HistogramMatching
-from .masking import Masking
-from .convolution import Convolution
-from .masking_superposition import  MaskingSuperposition
-from .filters import FiltersTool
-from .canny_edge import CannyEdge
-from .sharpening import Sharpening
-from .hog import HOGTool
+from .set2.channel_split import ChannelSplitTool
+from .set2.channel_swap import ChannelSwap
+from .set2.contrast_operations import ContrastOperations
+from .set2.histogram import HistogramVisualization
+from .set2.histogram_matching import HistogramMatching
+from .set2.masking import Masking
+from .set2.masking_superposition import MaskingSuperposition
+from .set3.canny_edge import CannyEdge
+from .set3.convolution import Convolution
+from .set3.filters import FiltersTool
+from .set3.hog import HOGTool
+from .set3.sharpening import Sharpening
+
 
 def build_tool_registry() -> ToolRegistry:
     return ToolRegistry(

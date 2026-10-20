@@ -6,7 +6,7 @@ from PIL import Image
 from tkinter import filedialog
 
 from forensics_app.core import ImageDocument
-from .base import ForensicsTool, ToolResult
+from ..base import ForensicsTool, ToolResult
 import skimage.exposure as exposure
 import skimage.color as color
 import numpy as np

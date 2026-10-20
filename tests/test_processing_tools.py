@@ -13,17 +13,17 @@ from PIL import Image
 import matplotlib.pyplot as plt
 
 from forensics_app.core import ImageDocument
-from forensics_app.tools.channel_split import ChannelSplitTool
-from forensics_app.tools.channel_swap import ChannelSwap
-from forensics_app.tools.contrast_operations import ContrastOperations
-from forensics_app.tools.convolution import Convolution
-from forensics_app.tools.filters import FiltersTool
-from forensics_app.tools.histogram import HistogramVisualization
-from forensics_app.tools.histogram_matching import HistogramMatching
-from forensics_app.tools.masking import Masking
-from forensics_app.tools.masking_superposition import MaskingSuperposition
-from forensics_app.tools.canny_edge import CannyEdge
-from forensics_app.tools.sharpening import Sharpening
+from forensics_app.tools.set2.channel_split import ChannelSplitTool
+from forensics_app.tools.set2.channel_swap import ChannelSwap
+from forensics_app.tools.set2.contrast_operations import ContrastOperations
+from forensics_app.tools.set3.convolution import Convolution
+from forensics_app.tools.set3.filters import FiltersTool
+from forensics_app.tools.set2.histogram import HistogramVisualization
+from forensics_app.tools.set2.histogram_matching import HistogramMatching
+from forensics_app.tools.set2.masking import Masking
+from forensics_app.tools.set2.masking_superposition import MaskingSuperposition
+from forensics_app.tools.set3.canny_edge import CannyEdge
+from forensics_app.tools.set3.sharpening import Sharpening
 
 
 class ProcessingToolTests(unittest.TestCase):
@@ -40,13 +40,13 @@ class ProcessingToolTests(unittest.TestCase):
 
     def test_channel_split_extracts_green(self):
         document = self.document([[[10, 20, 30], [40, 50, 60]]])
-        with patch("forensics_app.tools.channel_split.dialog_options", return_value="Green"):
+        with patch("forensics_app.tools.set2.channel_split.dialog_options", return_value="Green"):
             result = self.run_tool(ChannelSplitTool(), document)
         np.testing.assert_array_equal(np.asarray(result.image), [[20, 50]])
 
     def test_channel_swap_exchanges_red_and_blue(self):
         document = self.document([[[10, 20, 30]]])
-        with patch("forensics_app.tools.channel_swap.dialog_options", side_effect=["Red", "Blue"]):
+        with patch("forensics_app.tools.set2.channel_swap.dialog_options", side_effect=["Red", "Blue"]):
             result = self.run_tool(ChannelSwap(), document)
         np.testing.assert_array_equal(np.asarray(result.image), [[[30, 20, 10]]])
 
@@ -61,9 +61,9 @@ class ProcessingToolTests(unittest.TestCase):
 
     def test_histogram_counts_grayscale_pixels(self):
         document = self.document([[0, 0, 255]])
-        with patch("forensics_app.tools.histogram.dialog_options", return_value="Default"), \
-             patch("forensics_app.tools.histogram.plt.show"), \
-             patch("forensics_app.tools.histogram.plt.close"):
+        with patch("forensics_app.tools.set2.histogram.dialog_options", return_value="Default"), \
+             patch("forensics_app.tools.set2.histogram.plt.show"), \
+             patch("forensics_app.tools.set2.histogram.plt.close"):
             try:
                 result = self.run_tool(HistogramVisualization(), document)
                 counts = [bar.get_height() for bar in plt.gca().patches]
@@ -80,7 +80,7 @@ class ProcessingToolTests(unittest.TestCase):
         with TemporaryDirectory() as folder:
             filename = str(Path(folder) / "reference.png")
             Image.new("RGB", (2, 1), (128, 128, 128)).save(filename)
-            with patch("forensics_app.tools.histogram_matching.filedialog.askopenfilename", return_value=filename):
+            with patch("forensics_app.tools.set2.histogram_matching.filedialog.askopenfilename", return_value=filename):
                 result = self.run_tool(HistogramMatching(), document)
         np.testing.assert_allclose(np.asarray(result.image), 128, atol=1)
 
@@ -93,16 +93,16 @@ class ProcessingToolTests(unittest.TestCase):
         ]
         for choice, values, expected in cases:
             with self.subTest(choice=choice), \
-                 patch("forensics_app.tools.masking.dialog_options", return_value=choice), \
-                 patch("forensics_app.tools.masking.simpledialog.askinteger", side_effect=values):
+                 patch("forensics_app.tools.set2.masking.dialog_options", return_value=choice), \
+                 patch("forensics_app.tools.set2.masking.simpledialog.askinteger", side_effect=values):
                 result = self.run_tool(Masking(), document)
             np.testing.assert_array_equal(np.asarray(result.image), expected)
 
     def test_masking_cancellation(self):
         for choice in ("Binary", "Inverse", "Range"):
             with self.subTest(choice=choice), \
-                 patch("forensics_app.tools.masking.dialog_options", return_value=choice), \
-                 patch("forensics_app.tools.masking.simpledialog.askinteger", return_value=None) as ask:
+                 patch("forensics_app.tools.set2.masking.dialog_options", return_value=choice), \
+                 patch("forensics_app.tools.set2.masking.simpledialog.askinteger", return_value=None) as ask:
                 self.assertIsNone(self.run_tool(Masking(), self.document([[50]])))
                 ask.assert_called_once()
 
@@ -137,8 +137,8 @@ class ProcessingToolTests(unittest.TestCase):
         with TemporaryDirectory() as folder:
             filename = str(Path(folder) / "overlay.png")
             self.document([[[0, 0, 0], [255, 0, 0]]]).current.save(filename)
-            with patch("forensics_app.tools.masking_superposition.dialog_options", return_value="Put over an image"), \
-                 patch("forensics_app.tools.masking_superposition.filedialog.askopenfilename", return_value=filename):
+            with patch("forensics_app.tools.set2.masking_superposition.dialog_options", return_value="Put over an image"), \
+                 patch("forensics_app.tools.set2.masking_superposition.filedialog.askopenfilename", return_value=filename):
                 result = self.run_tool(MaskingSuperposition(), document)
         np.testing.assert_array_equal(np.asarray(result.image), [[[10, 20, 30], [255, 0, 0]]])
 
@@ -147,8 +147,8 @@ class ProcessingToolTests(unittest.TestCase):
         with TemporaryDirectory() as folder:
             filename = str(Path(folder) / "texture.png")
             Image.new("RGB", (2, 1), (10, 20, 30)).save(filename)
-            with patch("forensics_app.tools.masking_superposition.dialog_options", return_value="Change texture"), \
-                 patch("forensics_app.tools.masking_superposition.filedialog.askopenfilename", return_value=filename):
+            with patch("forensics_app.tools.set2.masking_superposition.dialog_options", return_value="Change texture"), \
+                 patch("forensics_app.tools.set2.masking_superposition.filedialog.askopenfilename", return_value=filename):
                 result = self.run_tool(MaskingSuperposition(), document)
         np.testing.assert_array_equal(np.asarray(result.image), [[[0, 0, 0], [10, 20, 30]]])
 
@@ -173,8 +173,8 @@ class ProcessingToolTests(unittest.TestCase):
     def test_canny_detects_a_boundary(self):
         pixels = np.zeros((32, 32), dtype=np.uint8)
         pixels[:, 16:] = 255
-        with patch("forensics_app.tools.canny_edge.dialog_options", side_effect=["Default thresholds", "Canny edges"]), \
-             patch("forensics_app.tools.canny_edge.simpledialog.askfloat", return_value=1.):
+        with patch("forensics_app.tools.set3.canny_edge.dialog_options", side_effect=["Default thresholds", "Canny edges"]), \
+             patch("forensics_app.tools.set3.canny_edge.simpledialog.askfloat", return_value=1.):
             result = self.run_tool(CannyEdge(), self.document(pixels))
         edges = np.asarray(result.image)
         self.assertGreater(np.count_nonzero(edges[2:-2, 14:18]), 0)
@@ -184,7 +184,7 @@ class ProcessingToolTests(unittest.TestCase):
 
     def test_sharpening_does_not_mix_constant_rgb_channels(self):
         pixels = np.full((8, 8, 3), (30, 100, 200), dtype=np.uint8)
-        with patch("forensics_app.tools.sharpening.simpledialog.askfloat", side_effect=[1., 1.]):
+        with patch("forensics_app.tools.set3.sharpening.simpledialog.askfloat", side_effect=[1., 1.]):
             result = self.run_tool(Sharpening(), self.document(pixels))
         np.testing.assert_allclose(np.asarray(result.image), pixels, atol=1)
 

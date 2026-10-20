@@ -8,8 +8,8 @@ from skimage import color
 from PIL import Image
 
 from forensics_app.core import ImageDocument
-from .base import ForensicsTool, ToolResult
-from .utilities import dialog_options
+from ..base import ForensicsTool, ToolResult
+from ..utilities import dialog_options
 
 
 class HistogramVisualization(ForensicsTool):
