@@ -13,8 +13,10 @@ from .set2.masking_superposition import MaskingSuperposition
 from .set3.canny_edge import CannyEdge
 from .set3.convolution import Convolution
 from .set3.filters import FiltersTool
-from .set3.hog import HOGTool
 from .set3.sharpening import Sharpening
+from .set4.cross_correlation import CrossCorrelationTool
+from .set4.hog import HOGTool
+from .set4.person_detection_hog import PersonDetectionHog
 
 
 def build_tool_registry() -> ToolRegistry:
@@ -34,6 +36,8 @@ def build_tool_registry() -> ToolRegistry:
             CannyEdge(),
             Sharpening(),
             HOGTool(),
+            CrossCorrelationTool(),
+            PersonDetectionHog(),
         ]
     )
 
