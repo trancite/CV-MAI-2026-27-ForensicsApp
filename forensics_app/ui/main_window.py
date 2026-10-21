@@ -9,9 +9,10 @@ from tkinter import filedialog, messagebox, ttk
 from PIL import Image, UnidentifiedImageError
 
 from forensics_app.core import ImageDocument
-from forensics_app.tools.base import ForensicsTool
+from forensics_app.tools.base import ForensicsTool, MatchPreview
 from forensics_app.tools.registry import ToolRegistry
 from .image_view import ImageView
+from .match_view import MatchView
 from .scrollable_frame import ScrollableFrame
 
 
@@ -30,6 +31,8 @@ class MainWindow:
         self.comparison_image: Image.Image | None = None
         self.comparison_path: Path | None = None
         self.comparison_title = tk.StringVar(value="Original")
+        self.match_preview: MatchPreview | None = None
+        self.show_matches = tk.BooleanVar(value=False)
         self.status = tk.StringVar(value="Ready. Open an image to begin.")
 
         self._configure_window()
@@ -85,6 +88,10 @@ class MainWindow:
         self.redo_button = ttk.Button(toolbar, text="Redo", command=self.redo)
         self.redo_button.pack(side="left", padx=(6, 0))
         ttk.Button(toolbar, text="Reset", command=self.reset).pack(side="left", padx=(6, 0))
+        self.matches_button = ttk.Checkbutton(
+            toolbar, text="Show matches", variable=self.show_matches, command=self._refresh,
+        )
+        self.matches_button.pack(side="left", padx=(12, 0))
 
         body = ttk.Panedwindow(container, orient="horizontal")
         body.pack(fill="both", expand=True)
@@ -123,7 +130,9 @@ class MainWindow:
         self.use_original_button.pack(side="left", padx=(6, 0))
 
         comparison = ttk.Panedwindow(image_area, orient="horizontal")
+        self.comparison_panes = comparison
         comparison.pack(fill="both", expand=True)
+        self.match_view = MatchView(image_area)
         reference_pane = ttk.Frame(comparison)
         comparison.add(reference_pane, weight=1)
         ttk.Label(reference_pane, textvariable=self.comparison_title, width=1, padding=(8, 6)).pack(fill="x")
@@ -165,6 +174,7 @@ class MainWindow:
             messagebox.showerror("Could not open image", str(error), parent=self.root)
             return
         self.status.set(f"Opened {Path(filename).name}")
+        self._clear_matches()
         self._show_default_details()
         self._refresh()
 
@@ -180,10 +190,12 @@ class MainWindow:
             return
         self.comparison_image = comparison_image
         self.comparison_path = Path(filename)
+        self._clear_matches()
         self.status.set(f"Comparing with {self.comparison_path.name}. Tools apply to the current result.")
         self._refresh()
 
     def use_original(self) -> None:
+        self._clear_matches()
         self.comparison_image = None
         self.comparison_path = None
         self.status.set("Showing the original image beside the current result.")
@@ -193,9 +205,11 @@ class MainWindow:
         if not self._require_image():
             return
         source = self.document.path
-        initial = f"{source.stem}_result.png" if source else "result.png"
+        match_map = self.match_preview if self.show_matches.get() else None
+        suffix = "matches" if match_map is not None else "result"
+        initial = f"{source.stem}_{suffix}.png" if source else f"{suffix}.png"
         filename = filedialog.asksaveasfilename(
-            title="Save processed image",
+            title="Save match map" if match_map is not None else "Save processed image",
             defaultextension=".png",
             initialfile=initial,
             filetypes=SAVE_TYPES,
@@ -203,7 +217,10 @@ class MainWindow:
         if not filename:
             return
         try:
-            self.document.save(filename)
+            if match_map is not None:
+                match_map.export_image.save(filename)
+            else:
+                self.document.save(filename)
         except OSError as error:
             messagebox.showerror("Could not save image", str(error), parent=self.root)
             return
@@ -221,26 +238,35 @@ class MainWindow:
         if result is None:
             self.status.set(f"Cancelled {tool.title}.")
             return
+        self._clear_matches()
         if result.image is not None:
             self.document.apply(result.image)
+        if result.match_preview is not None:
+            self.match_preview = result.match_preview
+            self.comparison_image = result.match_preview.left_image
+            self.comparison_path = result.match_preview.reference_path
+            self.show_matches.set(True)
         self._show_details(result.details)
         self.status.set(result.message)
         self._refresh()
 
     def undo(self) -> None:
         if self.document.undo():
+            self._clear_matches()
             self.status.set("Undid the last image operation.")
             self._show_default_details()
             self._refresh()
 
     def redo(self) -> None:
         if self.document.redo():
+            self._clear_matches()
             self.status.set("Redid the image operation.")
             self._show_default_details()
             self._refresh()
 
     def reset(self) -> None:
         if self.document.reset():
+            self._clear_matches()
             self.status.set("Restored the original image.")
             self._show_default_details()
             self._refresh()
@@ -251,12 +277,25 @@ class MainWindow:
         messagebox.showinfo("No image loaded", "Open an image first.", parent=self.root)
         return False
 
+    def _clear_matches(self) -> None:
+        self.match_preview = None
+        self.show_matches.set(False)
+
     def _refresh(self) -> None:
         reference = self.comparison_image if self.comparison_image is not None else self.document.original
         self.comparison_view.show(reference)
         self.comparison_title.set(f"Comparison: {self.comparison_path.name}" if self.comparison_path else "Original")
         self.use_original_button.configure(state="normal" if self.comparison_image is not None else "disabled")
         self.image_view.show(self.document.current)
+        self.matches_button.configure(state="normal" if self.match_preview is not None else "disabled")
+        if self.show_matches.get() and self.match_preview is not None:
+            self.comparison_panes.pack_forget()
+            self.match_view.pack(fill="both", expand=True)
+            self.match_view.show(self.match_preview)
+        else:
+            self.match_view.pack_forget()
+            self.match_view.show(None)
+            self.comparison_panes.pack(fill="both", expand=True)
         self.undo_button.configure(state="normal" if self.document.can_undo else "disabled")
         self.redo_button.configure(state="normal" if self.document.can_redo else "disabled")
         title = self.document.path.name if self.document.path else "No image"

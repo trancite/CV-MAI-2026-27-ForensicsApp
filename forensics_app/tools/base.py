@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from pathlib import Path
 import tkinter as tk
 from typing import Any
 
@@ -13,12 +14,24 @@ from forensics_app.core import ImageDocument
 
 
 @dataclass(frozen=True)
+class MatchPreview:
+    """Two images with paired (x, y) points for a resizable match map."""
+
+    left_image: Image.Image
+    right_image: Image.Image
+    point_pairs: tuple[tuple[tuple[float, float], tuple[float, float]], ...]
+    export_image: Image.Image
+    reference_path: Path
+
+
+@dataclass(frozen=True)
 class ToolResult:
     """A tool may produce an image, textual measurements, or both."""
 
     message: str
     image: Image.Image | None = None
     details: dict[str, Any] = field(default_factory=dict)
+    match_preview: MatchPreview | None = None
 
 
 class ForensicsTool(ABC):

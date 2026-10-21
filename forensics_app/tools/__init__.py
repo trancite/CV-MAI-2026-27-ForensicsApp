@@ -19,6 +19,7 @@ from .set4.cross_correlation import CrossCorrelationTool
 from .set4.hog import HOGTool
 from .set4.person_detection_hog import PersonDetectionHog
 from .set5.corner_detection import CornerDetectionTool
+from .set5.descriptor_and_keypoints import DescriptorAndKeypointsTool
 
 
 def build_tool_registry() -> ToolRegistry:
@@ -41,6 +42,7 @@ def build_tool_registry() -> ToolRegistry:
             CrossCorrelationTool(),
             PersonDetectionHog(),
             CornerDetectionTool(),
+            DescriptorAndKeypointsTool()
         ]
     )
 
