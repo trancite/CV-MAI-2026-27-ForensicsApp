@@ -7,8 +7,8 @@ from tkinter import simpledialog
 from tkinter import colorchooser
 
 from forensics_app.core import ImageDocument
-from .base import ForensicsTool, ToolResult
-from .utilities import dialog_options
+from ..base import ForensicsTool, ToolResult
+from ..utilities import dialog_options
 import numpy as np
 
 
