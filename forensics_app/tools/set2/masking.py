@@ -49,10 +49,9 @@ class Masking(ForensicsTool):
             if image_tensor.ndim == 3:
                 mask = mask[..., None]
                 masked_image_tensor = image_tensor * mask
-                masked_image = Image.fromarray(masked_image_tensor)
             else:
-                masked_image_tensor = mask.astype(np.uint8) * 255
-                masked_image = Image.fromarray(masked_image_tensor)
+                masked_image_tensor = image_tensor * mask
+            masked_image = Image.fromarray(masked_image_tensor)
 
 
             return ToolResult(
@@ -70,10 +69,9 @@ class Masking(ForensicsTool):
             if image_tensor.ndim == 3:
                 mask = mask[..., None]
                 masked_image_tensor = image_tensor * mask
-                masked_image = Image.fromarray(masked_image_tensor)
             else:
-                masked_image_tensor = mask.astype(np.uint8) * 255
-                masked_image = Image.fromarray(masked_image_tensor)
+                masked_image_tensor = image_tensor * mask
+            masked_image = Image.fromarray(masked_image_tensor)
 
             return ToolResult(
             image=masked_image,

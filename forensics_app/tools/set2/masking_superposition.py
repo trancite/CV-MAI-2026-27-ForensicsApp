@@ -48,7 +48,7 @@ class MaskingSuperposition(ForensicsTool):
             reference = reference.convert("RGB").resize(source.size, Image.Resampling.BILINEAR)
             src_arr = np.asarray(source.convert("RGB"))
             ref_arr = np.asarray(reference)
-            mask = np.all(src_arr == 0, axis=-1, keepdims=True)
+            mask = np.any(ref_arr != 0, axis=-1, keepdims=True)
             new_image = Image.fromarray(np.where(mask, ref_arr, src_arr).astype(np.uint8))
         
         else:
