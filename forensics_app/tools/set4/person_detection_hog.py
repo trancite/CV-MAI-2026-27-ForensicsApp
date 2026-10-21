@@ -56,13 +56,13 @@ class PersonDetectionHog(ForensicsTool):
             return None
         return self.metric_options[choice]
 
-    def _choose_hog_parameters(self, parent: tk.Misc) -> tuple[tuple[int, int], tuple[int, int], int] | None:
+    def _choose_hog_parameters(self, parent: tk.Misc, person_h: int, person_w: int) -> tuple[tuple[int, int], tuple[int, int], int] | None:
         selection = dialog_options(parent, "Hog parameters", "Do you want to choose the hog parameters?", ["No", "Yes"])
         if selection is None:
             return None
         if selection == "No":
-            return (8, 8), (3, 3), 9
-        
+            return (8, 8), (2, 2), 16
+
         pixels_per_cell = simpledialog.askinteger(title="Pixels per cell", prompt="Enter the number of pixels per cell (at least 2 for visualization):", minvalue=2, parent=parent)
         if pixels_per_cell is None: return None
         
@@ -192,7 +192,8 @@ class PersonDetectionHog(ForensicsTool):
         person = self._load_image_person(parent)
         if person is None:
             return None
-        hog_parameters = self._choose_hog_parameters(parent)
+        person_h, person_w = person.shape[0], person.shape[1]
+        hog_parameters = self._choose_hog_parameters(parent, person_h, person_w)
         if hog_parameters is None:
             return None
         metric = self._choose_metric(parent)

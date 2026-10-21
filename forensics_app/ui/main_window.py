@@ -6,12 +6,13 @@ from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-from PIL import UnidentifiedImageError
+from PIL import Image, UnidentifiedImageError
 
 from forensics_app.core import ImageDocument
 from forensics_app.tools.base import ForensicsTool
 from forensics_app.tools.registry import ToolRegistry
 from .image_view import ImageView
+from .scrollable_frame import ScrollableFrame
 
 
 OPEN_TYPES = [
@@ -26,6 +27,9 @@ class MainWindow:
         self.root = root
         self.registry = registry
         self.document = ImageDocument()
+        self.comparison_image: Image.Image | None = None
+        self.comparison_path: Path | None = None
+        self.comparison_title = tk.StringVar(value="Original")
         self.status = tk.StringVar(value="Ready. Open an image to begin.")
 
         self._configure_window()
@@ -50,6 +54,7 @@ class MainWindow:
         menu = tk.Menu(self.root)
         file_menu = tk.Menu(menu, tearoff=False)
         file_menu.add_command(label="Open image…", command=self.open_image, accelerator="Ctrl+O")
+        file_menu.add_command(label="Open comparison image…", command=self.open_comparison_image)
         file_menu.add_command(label="Save result as…", command=self.save_image, accelerator="Ctrl+Shift+S")
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.root.destroy)
@@ -90,11 +95,15 @@ class MainWindow:
         ttk.Label(sidebar, text="Forensics tools", style="Title.TLabel", background="#eef1f5").pack(
             anchor="w", pady=(0, 12)
         )
+        self.tool_list = ScrollableFrame(sidebar)
+        self.tool_list.pack(fill="both", expand=True)
         for category, tools in self.registry.categories():
-            ttk.Label(sidebar, text=category, style="Category.TLabel").pack(anchor="w", pady=(9, 4))
+            ttk.Label(self.tool_list.content, text=category, style="Category.TLabel").pack(
+                anchor="w", pady=(9, 4)
+            )
             for tool in tools:
                 button = ttk.Button(
-                    sidebar,
+                    self.tool_list.content,
                     text=tool.title,
                     style="Tool.TButton",
                     command=lambda selected=tool: self.run_tool(selected),
@@ -103,8 +112,29 @@ class MainWindow:
                 button.bind("<Enter>", lambda _event, selected=tool: self.status.set(selected.description))
                 button.bind("<Leave>", lambda _event: self.status.set("Ready."))
 
-        self.image_view = ImageView(body)
-        body.add(self.image_view, weight=1)
+        image_area = ttk.Frame(body)
+        body.add(image_area, weight=1)
+        comparison_actions = ttk.Frame(image_area, padding=(8, 6))
+        comparison_actions.pack(fill="x")
+        ttk.Button(comparison_actions, text="Open comparison…", command=self.open_comparison_image).pack(
+            side="left"
+        )
+        self.use_original_button = ttk.Button(comparison_actions, text="Use original", command=self.use_original)
+        self.use_original_button.pack(side="left", padx=(6, 0))
+
+        comparison = ttk.Panedwindow(image_area, orient="horizontal")
+        comparison.pack(fill="both", expand=True)
+        reference_pane = ttk.Frame(comparison)
+        comparison.add(reference_pane, weight=1)
+        ttk.Label(reference_pane, textvariable=self.comparison_title, width=1, padding=(8, 6)).pack(fill="x")
+        self.comparison_view = ImageView(reference_pane)
+        self.comparison_view.pack(fill="both", expand=True)
+
+        result_pane = ttk.Frame(comparison)
+        comparison.add(result_pane, weight=1)
+        ttk.Label(result_pane, text="Current result", width=1, padding=(8, 6)).pack(fill="x")
+        self.image_view = ImageView(result_pane)
+        self.image_view.pack(fill="both", expand=True)
 
         inspector = ttk.Frame(body, padding=12, width=250)
         inspector.pack_propagate(False)
@@ -136,6 +166,27 @@ class MainWindow:
             return
         self.status.set(f"Opened {Path(filename).name}")
         self._show_default_details()
+        self._refresh()
+
+    def open_comparison_image(self) -> None:
+        filename = filedialog.askopenfilename(title="Open comparison image", filetypes=OPEN_TYPES)
+        if not filename:
+            return
+        try:
+            with Image.open(filename) as image:
+                comparison_image = image.copy()
+        except (OSError, UnidentifiedImageError) as error:
+            messagebox.showerror("Could not open comparison image", str(error), parent=self.root)
+            return
+        self.comparison_image = comparison_image
+        self.comparison_path = Path(filename)
+        self.status.set(f"Comparing with {self.comparison_path.name}. Tools apply to the current result.")
+        self._refresh()
+
+    def use_original(self) -> None:
+        self.comparison_image = None
+        self.comparison_path = None
+        self.status.set("Showing the original image beside the current result.")
         self._refresh()
 
     def save_image(self) -> None:
@@ -201,6 +252,10 @@ class MainWindow:
         return False
 
     def _refresh(self) -> None:
+        reference = self.comparison_image if self.comparison_image is not None else self.document.original
+        self.comparison_view.show(reference)
+        self.comparison_title.set(f"Comparison: {self.comparison_path.name}" if self.comparison_path else "Original")
+        self.use_original_button.configure(state="normal" if self.comparison_image is not None else "disabled")
         self.image_view.show(self.document.current)
         self.undo_button.configure(state="normal" if self.document.can_undo else "disabled")
         self.redo_button.configure(state="normal" if self.document.can_redo else "disabled")
