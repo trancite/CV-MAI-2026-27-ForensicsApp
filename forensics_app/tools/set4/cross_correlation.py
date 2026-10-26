@@ -1,4 +1,4 @@
-"""Template matching with red markers at detected match centers."""
+"""Template matching with red peak markers or a raw normalized response map."""
 
 from __future__ import annotations
 
@@ -36,6 +36,7 @@ class CrossCorrelationTool(ForensicsTool):
             "Vertical flip",
             "Transposition",
         ]
+        self.visualization = ["Thresholded image", "Raw output"]
 
     def _choose_transformation(self, parent: tk.Misc) -> str | None:
         return dialog_options(
@@ -52,6 +53,12 @@ class CrossCorrelationTool(ForensicsTool):
     def _choose_filter(self, parent: tk.Misc) -> str | None:
         return dialog_options(
             parent, "Template matching", "Choose a matching method", self.options
+        )
+
+    def _choose_visualization(self, parent: tk.Misc) -> str | None:
+        return dialog_options(
+            parent, "Visualization", "Choose how to display normalized cross-correlation",
+            self.visualization,
         )
 
     def _choose_threshold(self, parent: tk.Misc, choice: str) -> float | None:
@@ -78,11 +85,13 @@ class CrossCorrelationTool(ForensicsTool):
         template = np.asarray(template, dtype=np.float64)
         return correlate(image - np.mean(image), template, mode="valid")
 
-    def _normalized_cross_correlation(self, image: np.ndarray, template: np.ndarray) -> np.ndarray:
+    def _normalized_cross_correlation(
+        self, image: np.ndarray, template: np.ndarray, *, pad_input: bool = False,
+    ) -> np.ndarray:
         image = np.asarray(image, dtype=np.float64)
         template = np.asarray(template, dtype=np.float64)
         if np.ptp(template) == 0: raise ValueError("Normalized cross-correlation needs a template with varying intensities.")
-        return feature.match_template(image, template, pad_input=False)
+        return feature.match_template(image, template, pad_input=pad_input)
 
     def run(self, parent: tk.Misc, document: ImageDocument) -> ToolResult | None:
         assert document.current is not None
@@ -124,11 +133,36 @@ class CrossCorrelationTool(ForensicsTool):
         if template_image.width > source.width or template_image.height > source.height:
             raise ValueError("The template must not be larger than the working image.")
 
-        threshold = self._choose_threshold(parent, choice)
-        if threshold is None: return None
-
+        details = {
+            "Operation": choice,
+            "Template": Path(template_path).name,
+            "Template transformation": transformation,
+            "Template size": template_image.size,
+        }
+        visualization = self.visualization[0]
+        if choice == self.options[2]:
+            visualization = self._choose_visualization(parent)
+            if visualization is None: return None
+            details["Visualization"] = visualization
         image = np.asarray(source.convert("L"), dtype=np.float64) / 255.0
         template = np.asarray(template_image, dtype=np.float64) / 255.0
+        if visualization == self.visualization[1]:
+            response = self._normalized_cross_correlation(image, template, pad_input=True)
+            raw_image = Image.fromarray(
+                exposure.rescale_intensity(response, out_range=(0, 255)).astype(np.uint8)
+            )
+            return ToolResult(
+                image=raw_image,
+                message="Showing the raw normalized cross-correlation response.",
+                details={
+                    **details,
+                    "Correlation range": (float(response.min()), float(response.max())),
+                    "Output mode": raw_image.mode,
+                },
+            )
+
+        threshold = self._choose_threshold(parent, choice)
+        if threshold is None: return None
         if choice == self.options[0]:
             differences = self._sum_square_differences(image, template)
             similarity = np.clip(1 - np.sqrt(differences), 0, 1)
@@ -140,10 +174,12 @@ class CrossCorrelationTool(ForensicsTool):
         else:
             similarity = self._normalized_cross_correlation(image, template)
 
+        use_relative_threshold = choice == self.options[1]
         peaks = feature.peak_local_max(
             similarity,
             min_distance=max(1, min(template.shape) // 2),
-            threshold_abs=threshold - 1e-12,
+            threshold_abs=0.0 if use_relative_threshold else threshold - 1e-12,
+            threshold_rel=max(0.0, threshold - 1e-12) if use_relative_threshold else None,
             exclude_border=False,
         )
         peaks = peaks[similarity[tuple(peaks.T)] > 0]
@@ -164,10 +200,7 @@ class CrossCorrelationTool(ForensicsTool):
             image=new_image,
             message=f"Marked {len(centers)} matching peaks in red.",
             details={
-                "Operation": choice,
-                "Template": Path(template_path).name,
-                "Template transformation": transformation,
-                "Template size": template_image.size,
+                **details,
                 "Peak threshold": threshold,
                 "Detected peaks": len(centers),
                 "Peak centers (x, y)": centers,

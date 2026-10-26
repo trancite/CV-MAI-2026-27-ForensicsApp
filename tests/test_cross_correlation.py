@@ -97,14 +97,19 @@ class CrossCorrelationImageTests(unittest.TestCase):
         ], dtype=np.uint8))
 
     def run_match(self, source, template, choice=None, threshold=1.0,
-                  transformation="No transformation", angle=90):
+                  transformation="No transformation", angle=90,
+                  visualization="Thresholded image"):
         document = ImageDocument()
         document.current = source.copy()
         before = document.current.tobytes()
+        choice = choice or self.tool.options[2]
+        selections = [choice, transformation]
+        if choice == self.tool.options[2]:
+            selections.append(visualization)
         with TemporaryDirectory() as folder:
             filename = str(Path(folder) / "template.png")
             template.save(filename)
-            with patch(f"{self.module}.dialog_options", side_effect=[choice or self.tool.options[2], transformation]), \
+            with patch(f"{self.module}.dialog_options", side_effect=selections), \
                  patch(f"{self.module}.filedialog.askopenfilename", return_value=filename), \
                  patch(f"{self.module}.simpledialog.askfloat", return_value=threshold), \
                  patch.object(self.tool, "_choose_angle", return_value=angle):
@@ -127,7 +132,65 @@ class CrossCorrelationImageTests(unittest.TestCase):
                 self.assertEqual(result.image.getpixel((2, 1)), (255, 0, 0))
                 self.assertEqual(result.image.getpixel((28, 18)), (255, 0, 0))
 
-    def test_gray_and_color_inputs_preserve_pixels_away_from_markers(self):
+    def test_mean_subtracted_correlation_uses_an_inclusive_relative_threshold(self):
+        source = Image.new("L", (24, 17), 100)
+        positions = [(1, 1), (7, 10), (13, 19)]
+        cases = [
+            ((0.6, 0.54, 0.3), 0.8),
+            ((0.6, 0.48, 0.3), 0.8),
+            ((0.6, 0.6, 0.3), 1.0),
+        ]
+        for values, threshold in cases:
+            with self.subTest(values=values, threshold=threshold):
+                response = np.zeros((15, 21))
+                for position, value in zip(positions, values):
+                    response[position] = value
+                with patch.object(self.tool, "_cross_correlation_normalized_image", return_value=response):
+                    result = self.run_match(source, self.template, self.tool.options[1], threshold)
+                self.assertEqual(set(result.details["Peak centers (x, y)"]), {(3, 2), (12, 8)})
+                self.assertEqual(result.details["Detected peaks"], 2)
+                self.assertEqual(result.image.getpixel((3, 2)), (255, 0, 0))
+                self.assertEqual(result.image.getpixel((12, 8)), (255, 0, 0))
+
+        with self.subTest(method="Normalized cross-correlation keeps its absolute threshold"):
+            with patch.object(self.tool, "_normalized_cross_correlation", return_value=response):
+                result = self.run_match(source, self.template, self.tool.options[2], threshold=0.8)
+            self.assertEqual(result.details["Detected peaks"], 0)
+
+    def test_relative_correlation_with_no_positive_response_has_no_matches(self):
+        source = Image.new("L", (24, 17), 100)
+        negative_response = np.full((15, 21), -1.0)
+        negative_response[7, 10] = -0.1
+        for response in (np.zeros((15, 21)), negative_response):
+            with self.subTest(maximum=float(response.max())):
+                with patch.object(self.tool, "_cross_correlation_normalized_image", return_value=response):
+                    result = self.run_match(source, self.template, self.tool.options[1], threshold=0.8)
+                self.assertEqual(result.details["Detected peaks"], 0)
+                self.assertEqual(result.details["Peak centers (x, y)"], [])
+
+    def test_relative_correlation_finds_an_exact_low_contrast_template(self):
+        template = Image.fromarray(np.array([
+            [9, 10, 11],
+            [12, 8, 10],
+            [11, 10, 9],
+        ], dtype=np.uint8))
+        source = Image.new("L", (24, 17))
+        source.paste(template, (9, 7))
+        response = self.tool._cross_correlation_normalized_image(
+            np.asarray(source, dtype=np.float64) / 255,
+            np.asarray(template, dtype=np.float64) / 255,
+        )
+        self.assertGreater(float(response.max()), 0)
+        self.assertLess(float(response.max()), 0.8)
+        self.assertEqual(np.unravel_index(np.argmax(response), response.shape), (7, 9))
+
+        result = self.run_match(source, template, self.tool.options[1], threshold=0.8)
+
+        self.assertEqual(result.details["Peak centers (x, y)"], [(10, 8)])
+        self.assertEqual(result.details["Detected peaks"], 1)
+        self.assertEqual(result.image.getpixel((10, 8)), (255, 0, 0))
+
+    def test_gray_and_color_inputs_dim_background_and_keep_markers_red(self):
         generator = np.random.default_rng(123)
         for source_mode in ("L", "RGB"):
             for template_mode in ("L", "RGB"):
@@ -135,10 +198,16 @@ class CrossCorrelationImageTests(unittest.TestCase):
                     shape = (20, 30) if source_mode == "L" else (20, 30, 3)
                     source = Image.fromarray(generator.integers(0, 256, size=shape, dtype=np.uint8))
                     source.paste(self.template.convert(source_mode), (9, 7))
+                    if source_mode == "L":
+                        source.putpixel((25, 15), 128)
+                        expected_background = (64, 64, 64)
+                    else:
+                        source.putpixel((25, 15), (51, 102, 153))
+                        expected_background = (10, 41, 92)
                     result = self.run_match(source, self.template.convert(template_mode))
                     self.assertEqual(result.details["Peak centers (x, y)"], [(11, 8)])
                     self.assertEqual(result.image.getpixel((11, 8)), (255, 0, 0))
-                    self.assertEqual(result.image.getpixel((25, 15)), source.convert("RGB").getpixel((25, 15)))
+                    self.assertEqual(result.image.getpixel((25, 15)), expected_background)
 
     def test_even_height_template_and_single_valid_position(self):
         template = self.template.crop((0, 0, 3, 2))
@@ -146,11 +215,82 @@ class CrossCorrelationImageTests(unittest.TestCase):
         self.assertEqual(result.details["Peak centers (x, y)"], [(1, 1)])
         self.assertEqual(result.image.getpixel((1, 1)), (255, 0, 0))
 
-    def test_no_peaks_for_a_flat_normalized_response(self):
+    def test_flat_normalized_response_has_no_markers_on_dimmed_background(self):
         source = Image.new("RGB", (20, 15), (50, 100, 150))
         result = self.run_match(source, self.template)
         self.assertEqual(result.details["Detected peaks"], 0)
-        np.testing.assert_array_equal(np.asarray(result.image), np.asarray(source))
+        expected = Image.new("RGB", source.size, (10, 39, 88))
+        np.testing.assert_array_equal(np.asarray(result.image), np.asarray(expected))
+
+    def test_raw_normalized_correlation_returns_a_source_sized_grayscale_map(self):
+        generator = np.random.default_rng(123)
+        source = Image.fromarray(generator.integers(0, 256, size=(20, 30, 3), dtype=np.uint8))
+        source.paste(self.template.convert("RGB"), (9, 7))
+        response = self.tool._normalized_cross_correlation(
+            np.asarray(source.convert("L"), dtype=np.float64) / 255,
+            np.asarray(self.template, dtype=np.float64) / 255,
+            pad_input=True,
+        )
+        with patch.object(self.tool, "_choose_threshold") as choose_threshold, \
+             patch.object(self.tool, "_normalized_cross_correlation", wraps=self.tool._normalized_cross_correlation) as correlate, \
+             patch(f"{self.module}.feature.peak_local_max") as find_peaks, \
+             patch(f"{self.module}.exposure.adjust_gamma") as adjust_gamma:
+            result = self.run_match(source, self.template, visualization="Raw output")
+        choose_threshold.assert_not_called()
+        find_peaks.assert_not_called()
+        adjust_gamma.assert_not_called()
+        correlate.assert_called_once()
+        self.assertTrue(correlate.call_args.kwargs["pad_input"])
+        self.assertEqual(result.image.mode, "L")
+        self.assertEqual(result.image.size, source.size)
+        self.assertEqual(result.details["Visualization"], "Raw output")
+        self.assertEqual(result.details["Output mode"], "L")
+        self.assertNotIn("Peak threshold", result.details)
+        self.assertNotIn("Detected peaks", result.details)
+        self.assertNotIn("Peak centers (x, y)", result.details)
+        pixels = np.asarray(result.image)
+        self.assertEqual(int(pixels.min()), 0)
+        self.assertEqual(int(pixels.max()), 255)
+        ordered_pixels = pixels.ravel()[np.argsort(response, axis=None)].astype(int)
+        self.assertTrue(np.all(np.diff(ordered_pixels) >= 0))
+
+    def test_raw_normalized_correlation_handles_flat_response_maps(self):
+        source = Image.new("RGB", (20, 15), (50, 100, 150))
+        for value in (0.0, 0.5):
+            with self.subTest(response=value):
+                response = np.full((15, 20), value)
+                with patch.object(self.tool, "_normalized_cross_correlation", return_value=response):
+                    result = self.run_match(source, self.template, visualization="Raw output")
+                self.assertEqual(result.image.mode, "L")
+                self.assertEqual(result.image.size, source.size)
+                self.assertEqual(np.unique(np.asarray(result.image)).size, 1)
+
+    def test_cancelling_the_ncc_visualization_stops_before_processing(self):
+        source = Image.new("RGB", (20, 15), (50, 100, 150))
+        with patch.object(self.tool, "_choose_threshold") as choose_threshold, \
+             patch.object(self.tool, "_normalized_cross_correlation") as correlate, \
+             patch(f"{self.module}.feature.peak_local_max") as find_peaks, \
+             patch(f"{self.module}.exposure.adjust_gamma") as adjust_gamma:
+            result = self.run_match(source, self.template, visualization=None)
+        self.assertIsNone(result)
+        choose_threshold.assert_not_called()
+        correlate.assert_not_called()
+        find_peaks.assert_not_called()
+        adjust_gamma.assert_not_called()
+
+    def test_other_matching_methods_do_not_offer_the_ncc_visualization(self):
+        source = Image.new("L", (20, 15))
+        source.paste(self.template, (9, 7))
+        for choice in self.tool.options[:2]:
+            with self.subTest(choice=choice):
+                with patch.object(self.tool, "_choose_visualization") as choose_visualization, \
+                     patch.object(self.tool, "_choose_threshold", wraps=self.tool._choose_threshold) as choose_threshold:
+                    result = self.run_match(source, self.template, choice, visualization="Raw output")
+                choose_visualization.assert_not_called()
+                choose_threshold.assert_called_once()
+                self.assertEqual(result.image.mode, "RGB")
+                self.assertEqual(result.details["Peak centers (x, y)"], [(11, 8)])
+                self.assertEqual(result.image.getpixel((11, 8)), (255, 0, 0))
 
     def test_ssd_accepts_a_constant_template(self):
         source = Image.new("L", (4, 3), 128)
