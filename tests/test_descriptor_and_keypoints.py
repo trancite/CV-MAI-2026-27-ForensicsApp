@@ -70,6 +70,102 @@ class DescriptorAndKeypointsTests(unittest.TestCase):
                 self.assertIsNone(self.tool.run(None, self.document))
             extract.assert_not_called()
 
+    def test_sift_sigma_has_a_valid_minimum_in_dialog_and_extraction(self):
+        with patch(f"{MODULE}.simpledialog.askinteger", side_effect=[2, 3]), \
+             patch(f"{MODULE}.simpledialog.askfloat", return_value=1.0) as askfloat:
+            parameters = self.tool._choose_parameters(None, "SIFT")
+        self.assertEqual(askfloat.call_args.kwargs["minvalue"], 1.0)
+        self.assertEqual(parameters["sigma_min"], 1.0)
+        keypoints, descriptors = self.tool._generate_keypoints_and_descriptors(self.pixels, "SIFT", parameters)
+        self.assertGreater(len(keypoints), 0)
+        self.assertEqual(len(keypoints), len(descriptors))
+        for sigma in (.1, .5, .99):
+            with self.subTest(sigma=sigma), self.assertRaisesRegex(ValueError, "(?i)sigma.*1"):
+                self.tool._generate_keypoints_and_descriptors(
+                    self.pixels, "SIFT", {"n_octaves": 2, "n_scales": 3, "sigma_min": sigma},
+                )
+
+    def test_featureless_extraction_is_empty_but_unexpected_errors_propagate(self):
+        blank = np.zeros_like(self.pixels)
+        for algorithm, parameters, width, dtype in (
+            ("ORB", {"n_keypoints": 100}, 256, np.bool_),
+            ("SIFT", {"n_octaves": 2, "n_scales": 3, "sigma_min": 1.6}, 128, np.uint8),
+        ):
+            with self.subTest(algorithm=algorithm):
+                keypoints, descriptors = self.tool._generate_keypoints_and_descriptors(blank, algorithm, parameters)
+                self.assertEqual(keypoints.shape, (0, 2))
+                self.assertEqual(descriptors.shape, (0, width))
+                self.assertEqual(descriptors.dtype, dtype)
+            with self.subTest(algorithm=algorithm, unexpected_error=True), \
+                 patch(f"{MODULE}.{algorithm}") as extractor:
+                extractor.return_value.detect_and_extract.side_effect = RuntimeError("unexpected extractor failure")
+                with self.assertRaisesRegex(RuntimeError, "unexpected extractor failure"):
+                    self.tool._generate_keypoints_and_descriptors(blank, algorithm, parameters)
+
+    def test_highlighting_featureless_image_reports_zero_without_changing_document(self):
+        blank = np.zeros_like(self.pixels)
+        self.document.current = Image.fromarray(blank)
+        for algorithm, parameters in (
+            ("ORB", {"n_keypoints": 100}),
+            ("SIFT", {"n_octaves": 2, "n_scales": 3, "sigma_min": 1.6}),
+        ):
+            with self.subTest(algorithm=algorithm), \
+                 patch(f"{MODULE}.dialog_options", side_effect=[algorithm, self.tool.options[0]]), \
+                 patch.object(self.tool, "_choose_parameters", return_value=parameters):
+                result = self.tool.run(None, self.document)
+            self.assertIn("No keypoints", result.message)
+            self.assertEqual(result.details["Number of keypoints"], 0)
+            self.assertIsNone(result.image)
+            np.testing.assert_array_equal(np.asarray(self.document.current), blank)
+            self.assertFalse(self.document.can_undo)
+
+    def test_matching_with_featureless_source_or_reference_has_no_connections(self):
+        blank = np.zeros_like(self.pixels)
+        blank_path = Path(self.folder.name) / "blank.png"
+        Image.fromarray(blank).save(blank_path)
+        for algorithm, parameters in (
+            ("ORB", {"n_keypoints": 100}),
+            ("SIFT", {"n_octaves": 2, "n_scales": 3, "sigma_min": 1.6}),
+        ):
+            for blank_source in (True, False):
+                source = blank if blank_source else self.pixels
+                reference = self.pixels if blank_source else blank
+                reference_path = self.reference if blank_source else blank_path
+                self.document.current = Image.fromarray(source)
+                for scoring in self.tool.matching_scores:
+                    with self.subTest(algorithm=algorithm, blank_source=blank_source, scoring=scoring), \
+                         patch(f"{MODULE}.dialog_options", side_effect=[algorithm, self.tool.options[1], scoring]), \
+                         patch(f"{MODULE}.filedialog.askopenfilename", return_value=str(reference_path)), \
+                         patch.object(self.tool, "_choose_parameters", return_value=parameters):
+                        result = self.tool.run(None, self.document)
+                    self.assertEqual(result.details["Matches"], 0)
+                    self.assertEqual(result.details["Matching score"], 0.0)
+                    self.assertEqual(result.match_preview.point_pairs, ())
+                    expected = np.repeat(np.concatenate((reference, source), axis=1)[..., None], 3, axis=2)
+                    np.testing.assert_array_equal(np.asarray(result.match_preview.export_image), expected)
+                    self.assertIsNone(result.image)
+                    np.testing.assert_array_equal(np.asarray(self.document.current), source)
+                    self.assertFalse(self.document.can_undo)
+
+    def test_find_closest_with_featureless_source_reports_no_keypoints(self):
+        blank = np.zeros_like(self.pixels)
+        self.document.current = Image.fromarray(blank)
+        Image.fromarray(self.similar_pixels).save(Path(self.folder.name) / "candidate.png")
+        for algorithm, parameters in (
+            ("ORB", {"n_keypoints": 100}),
+            ("SIFT", {"n_octaves": 2, "n_scales": 3, "sigma_min": 1.6}),
+        ):
+            with self.subTest(algorithm=algorithm), \
+                 patch(f"{MODULE}.dialog_options", side_effect=[algorithm, self.tool.options[2], "Default"]), \
+                 patch(f"{MODULE}.filedialog.askdirectory", return_value=self.folder.name), \
+                 patch.object(self.tool, "_choose_parameters", return_value=parameters):
+                result = self.tool.run(None, self.document)
+            self.assertIn("No keypoints", result.message)
+            self.assertIsNone(result.match_preview)
+            self.assertIsNone(result.image)
+            np.testing.assert_array_equal(np.asarray(self.document.current), blank)
+            self.assertFalse(self.document.can_undo)
+
     def test_export_connects_selected_points_with_reference_offset(self):
         first = Image.new("RGB", (12, 8), "black")
         second = Image.new("RGB", (9, 11), "blue")

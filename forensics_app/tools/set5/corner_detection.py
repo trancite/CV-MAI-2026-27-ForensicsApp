@@ -45,8 +45,14 @@ class CornerDetectionTool(ForensicsTool):
             params["min_distance"] = min_distance
            
         else:  
-            threshold = simpledialog.askfloat("FAST Parameters", "Enter intensity threshold (0-255):", minvalue=0.0, maxvalue=255.0, parent=parent)
+            intensity_threshold = simpledialog.askfloat("FAST Parameters", "Enter intensity threshold (0-255):", minvalue=0.0, maxvalue=255.0, parent=parent)
+            if intensity_threshold is None: return None
+            threshold = simpledialog.askfloat(
+                "FAST Peaks", "Enter minimum peak strength relative to the maximum (0-1):",
+                minvalue=0.0, maxvalue=1.0, parent=parent,
+            )
             if threshold is None: return None
+            params["intensity_threshold"] = intensity_threshold
             params["threshold"] = threshold
             
         params["method"] = method
@@ -71,8 +77,8 @@ class CornerDetectionTool(ForensicsTool):
             response = feature.corner_harris(gray)
             corners = feature.corner_peaks(response, threshold_rel=params["threshold"], min_distance=int(params["min_distance"]))
         elif method == self.options[1]:  
-            response = feature.corner_fast(gray, threshold=params["threshold"])
-            corners = feature.corner_peaks(response)
+            response = feature.corner_fast(gray, threshold=params["intensity_threshold"] / 255.0)
+            corners = feature.corner_peaks(response, threshold_rel=params["threshold"])
 
         if display_mode == self.display_options[0]:
             output_image = Image.fromarray(gray2rgb(gray))

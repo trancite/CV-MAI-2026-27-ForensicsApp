@@ -17,7 +17,7 @@ class HOGTests(unittest.TestCase):
 
     def test_one_pixel_cells_fail_with_a_clear_validation_error(self):
         self.document.current = Image.new("L", (32, 32))
-        with patch.object(self.tool, "choose_parameters", return_value=((1, 1), (3, 3))):
+        with patch.object(self.tool, "choose_parameters", return_value=((1, 1), (3, 3), 9)):
             with self.assertRaisesRegex(ValueError, "at least 2 pixels per cell"):
                 self.tool.run(None, self.document)
 
@@ -25,7 +25,7 @@ class HOGTests(unittest.TestCase):
         for size in ((32, 48), (48, 32), (32, 32)):
             with self.subTest(size=size):
                 self.document.current = Image.new("L", size)
-                with patch.object(self.tool, "choose_parameters", return_value=((16, 16), (3, 3))):
+                with patch.object(self.tool, "choose_parameters", return_value=((16, 16), (3, 3), 9)):
                     with self.assertRaisesRegex(ValueError, "require at least a 48 x 48 image"):
                         self.tool.run(None, self.document)
 
@@ -38,7 +38,7 @@ class HOGTests(unittest.TestCase):
                     shape = (side, side) if mode == "L" else (side, side, 3)
                     original = generator.integers(0, 256, shape, dtype=np.uint8)
                     self.document.current = Image.fromarray(original)
-                    params = ((pixels_per_cell, pixels_per_cell), (3, 3))
+                    params = ((pixels_per_cell, pixels_per_cell), (3, 3), 9)
                     with patch.object(self.tool, "choose_parameters", return_value=params):
                         result = self.tool.run(None, self.document)
                     self.assertEqual(result.image.mode, "L")

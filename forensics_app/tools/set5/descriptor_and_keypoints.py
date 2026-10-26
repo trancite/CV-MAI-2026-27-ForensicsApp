@@ -45,7 +45,10 @@ class DescriptorAndKeypointsTool(ForensicsTool):
         n_scales  = simpledialog.askinteger("Number of scales", "Choose the number of scales for the SIFT algorithm", minvalue = 1, parent = parent)
         if n_scales is None: return None
 
-        sigma = simpledialog.askfloat("Sigma", "Choose a value for sigma for the SIFT algorithm", minvalue=1e-1, parent=parent)
+        sigma = simpledialog.askfloat(
+            "Sigma", "Choose the initial Gaussian blur sigma for SIFT (at least 1.0)",
+            initialvalue=1.6, minvalue=1.0, parent=parent,
+        )
         if sigma is None: return None
 
         return (n_octaves, n_scales, sigma)
@@ -61,8 +64,20 @@ class DescriptorAndKeypointsTool(ForensicsTool):
         return {"n_octaves": n_octaves, "n_scales": n_scales, "sigma_min": sigma}
 
     def _generate_keypoints_and_descriptors(self, image_array: np.ndarray, algorithm: str, parameters: dict) -> tuple:
-        extractor = ORB(**parameters) if algorithm == self.algorithms[0] else SIFT(**parameters)
-        extractor.detect_and_extract(image_array)
+        if algorithm == self.algorithms[0]:
+            extractor = ORB(**parameters)
+        else:
+            sigma = parameters.get("sigma_min", 1.6)
+            if not np.isfinite(sigma) or sigma < 1.0:
+                raise ValueError("SIFT sigma must be finite and at least 1.0.")
+            extractor = SIFT(**parameters)
+        try:
+            extractor.detect_and_extract(image_array)
+        except RuntimeError as error:
+            if not str(error).startswith(f"{algorithm} found no features"):
+                raise
+            size, dtype = (256, bool) if algorithm == "ORB" else (128, np.uint8)
+            return np.empty((0, 2), dtype=float), np.empty((0, size), dtype=dtype)
         return extractor.keypoints, extractor.descriptors
 
 
@@ -158,6 +173,11 @@ class DescriptorAndKeypointsTool(ForensicsTool):
         source_keypoints, source_descriptors = self._generate_keypoints_and_descriptors(
             np.asarray(original_image.convert("L")), algorithm, parameters,
         )
+        if len(source_keypoints) == 0:
+            return ToolResult(
+                message="No keypoints found in the working image.",
+                details={"Method": algorithm, "Number of keypoints": 0},
+            )
         metric = "hamming" if algorithm == "ORB" else "euclidean"
         best = None
         best_rank = (0.0, 0)
@@ -207,6 +227,11 @@ class DescriptorAndKeypointsTool(ForensicsTool):
 
         if tool == self.options[0]:
             keypoints, _ = self._generate_keypoints_and_descriptors(src_image, algorithm, parameters)
+            if len(keypoints) == 0:
+                return ToolResult(
+                    message="No keypoints found in the working image.",
+                    details={"Method": algorithm, "Number of keypoints": 0},
+                )
             rgb_image = gray2rgb(src_image)
             coords = np.round(keypoints).astype(int)
             rgb_image[coords[:, 0], coords[:, 1]] = [255, 0, 0]
