@@ -24,6 +24,7 @@ from .set5.match_with_second_image import MatchWithSecondImageTool
 from .set5.find_closest_image import FindClosestImageTool
 from .set6.face_detection import FaceDetection
 from .set6.eigenfaces import EigenFaces
+from .set7.BoW import BagOfWords
 
 
 def build_tool_registry() -> ToolRegistry:
@@ -51,6 +52,7 @@ def build_tool_registry() -> ToolRegistry:
             FindClosestImageTool(),
             FaceDetection(),
             EigenFaces(),
+            BagOfWords(),
         ]
     )
 

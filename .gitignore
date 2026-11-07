@@ -19,6 +19,7 @@ datasets/
 /Set4_images/
 /Set5_images/
 /Set6_materials/
+/Caltech_101_subset/
 
 # Image files, including uppercase and mixed-case extensions
 *.[pP][nN][gG]
