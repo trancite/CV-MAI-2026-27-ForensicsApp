@@ -17,8 +17,6 @@ from ..utilities import dialog_options
 
 
 class KeypointTool(ForensicsTool):
-    """Common extraction settings for the three Set 5 keypoint tools."""
-
     category = "Set5"
     algorithms = ["ORB", "SIFT"]
 
@@ -71,7 +69,6 @@ class KeypointTool(ForensicsTool):
 
 
 class KeypointMatchingTool(KeypointTool):
-    """Common scoring and visualization for image matching and folder search."""
 
     matching_scores = ["Default", "RANSAC"]
 

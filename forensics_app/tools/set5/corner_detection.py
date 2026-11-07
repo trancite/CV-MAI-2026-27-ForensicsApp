@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import simpledialog
 import numpy as np
 from PIL import Image, ImageDraw
-import matplotlib.cm as cm  # <-- AÑADIMOS ESTO PARA EL MAPA DE CALOR MORADO
+import matplotlib.cm as cm
 from skimage import feature
 from forensics_app.core import ImageDocument
 from ..base import ForensicsTool, ToolResult
@@ -34,7 +34,7 @@ class CornerDetectionTool(ForensicsTool):
         
         params = {}
         
-        if method == self.options[0]:  # Harris
+        if method == self.options[0]: 
             threshold = simpledialog.askfloat("Harris Parameters", "Enter threshold (0-1):", minvalue=0.0, maxvalue=1.0, parent=parent)
             if threshold is None: return None
             
@@ -87,7 +87,6 @@ class CornerDetectionTool(ForensicsTool):
                 draw.ellipse([x-2, y-2, x+2, y+2], outline=(255, 0, 0), width=1)
                 
         else:
-
             resp_min, resp_max = response.min(), response.max()
             if resp_max > resp_min:
                 resp_norm = (response - resp_min) / (resp_max - resp_min)

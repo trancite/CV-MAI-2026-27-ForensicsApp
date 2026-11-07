@@ -2,6 +2,8 @@
 __pycache__/
 *.py[cod]
 .DS_Store
+__MACOSX/
+._*
 .idea/
 .vscode/
 .pytest_cache/
@@ -11,3 +13,39 @@ dist/
 outputs/
 models/
 datasets/
+
+# Local course images and materials
+/set2-images/
+/Set4_images/
+/Set5_images/
+/Set6_materials/
+
+# Image files, including uppercase and mixed-case extensions
+*.[pP][nN][gG]
+*.[jJ][pP][gG]
+*.[jJ][pP][eE][gG]
+*.[jJ][fF][iI][fF]
+*.[bB][mM][pP]
+*.[gG][iI][fF]
+*.[tT][iI][fF]
+*.[tT][iI][fF][fF]
+*.[wW][eE][bB][pP]
+*.[sS][vV][gG]
+*.[iI][cC][oO]
+*.[aA][vV][iI][fF]
+*.[hH][eE][iI][cC]
+*.[hH][eE][iI][fF]
+*.[pP][bB][mM]
+*.[pP][gG][mM]
+*.[pP][pP][mM]
+*.[pP][nN][mM]
+
+# Editor backups and merge leftovers
+*~
+*.bak
+*.orig
+*.rej
+*_BACKUP_*.py
+*_BASE_*.py
+*_LOCAL_*.py
+*_REMOTE_*.py

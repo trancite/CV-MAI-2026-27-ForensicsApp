@@ -22,6 +22,8 @@ from .set5.corner_detection import CornerDetectionTool
 from .set5.descriptor_and_keypoints import DescriptorAndKeypointsTool
 from .set5.match_with_second_image import MatchWithSecondImageTool
 from .set5.find_closest_image import FindClosestImageTool
+from .set6.face_detection import FaceDetection
+from .set6.eigenfaces import EigenFaces
 
 
 def build_tool_registry() -> ToolRegistry:
@@ -47,6 +49,8 @@ def build_tool_registry() -> ToolRegistry:
             DescriptorAndKeypointsTool(),
             MatchWithSecondImageTool(),
             FindClosestImageTool(),
+            FaceDetection(),
+            EigenFaces(),
         ]
     )
 
