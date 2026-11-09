@@ -27,6 +27,7 @@ from .set6.eigenfaces import EigenFaces
 from .set6.face_recognition import FaceRecognition
 from .set7.BoW import BagOfWords
 from .set7.histogram_construction import HistogramConstruction
+
 from .set7.classification import Classification
 
 
