@@ -27,10 +27,8 @@ from .set6.eigenfaces import EigenFaces
 from .set6.face_recognition import FaceRecognition
 from .set7.BoW import BagOfWords
 from .set7.histogram_construction import HistogramConstruction
-<<<<<<< HEAD
-=======
+
 from .set7.classification import Classification
->>>>>>> 65e6602dd99dc7b164e7d7d35e8e84966122ec14
 
 
 def build_tool_registry() -> ToolRegistry:
