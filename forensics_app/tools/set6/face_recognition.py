@@ -47,7 +47,7 @@ class FaceRecognition(ForensicsTool):
             ],
         )
 
-    def _load_images(self, images_paths: list) -> np.ndarray:
+    def _load_images(self, images_paths: list, exclude: np.ndarray | None = None) -> np.ndarray:
         rows = []
         loaded_paths = []
         image_shape = None
@@ -60,6 +60,9 @@ class FaceRecognition(ForensicsTool):
                         dtype=np.float32,
                     )
             except (OSError, RuntimeError, ValueError):
+                continue
+
+            if exclude is not None and np.array_equal(candidate_image, exclude):
                 continue
 
             if image_shape is None:
@@ -114,13 +117,10 @@ class FaceRecognition(ForensicsTool):
         if not 0 < pov <= 1:
             raise ValueError("POV must be between 0 and 1.")
 
-        # Calculate the mean face
         self.mean_ = X.mean(axis=0)
 
-        # Center the training data
         centered = X - self.mean_
 
-        # Compute PCA using SVD
         _, singular_values, vectors_t = np.linalg.svd(
             centered,
             full_matrices=False,
@@ -142,7 +142,6 @@ class FaceRecognition(ForensicsTool):
 
         ratios = eigenvalues / total_variance
 
-        # Select the number of components using POV
         cumulative = np.cumsum(ratios)
         cumulative[-1] = 1.0
 
@@ -152,7 +151,6 @@ class FaceRecognition(ForensicsTool):
         self.eigenvalues_ = eigenvalues[:count]
         self.explained_variance_ratio_ = ratios[:count]
 
-        # Calculate training coefficients
         self.coefficients_ = centered @ self.components_.T
 
         return self.coefficients_
@@ -163,10 +161,8 @@ class FaceRecognition(ForensicsTool):
 
         flattened = test_image.ravel().astype(np.float64)
 
-        # Center the test image using the training mean
         centered = flattened - self.mean_
 
-        # Project the test image onto the eigenfaces
         coefficients = centered @ self.components_.T
 
         return coefficients
@@ -181,13 +177,9 @@ class FaceRecognition(ForensicsTool):
         for path in self.loaded_paths_:
             relative_path = path.relative_to(training_folder)
 
-            # If images are organized in identity subfolders,
-            # use the folder name as the identity.
             if len(relative_path.parts) > 1:
                 label = relative_path.parts[0]
             else:
-                # If all images are in one folder,
-                # use the filename as the label.
                 label = path.stem
 
             labels.append(label)
@@ -205,7 +197,6 @@ class FaceRecognition(ForensicsTool):
 
         distances = np.linalg.norm(differences, axis=1)
 
-        # Find the indices of the closest training images
         indices = np.argsort(distances)[:n_neighbors]
 
         return indices, distances[indices]
@@ -230,12 +221,10 @@ class FaceRecognition(ForensicsTool):
         try:
             axes = axes.flat
 
-            # Display the test image
             axes[0].imshow(test_image.astype(np.uint8))
             axes[0].set_title("Test image")
             axes[0].axis("off")
 
-            # Display the closest training faces
             for position, (index, distance) in enumerate(
                 zip(indices, distances),
                 start=1,
@@ -286,7 +275,6 @@ class FaceRecognition(ForensicsTool):
         if not test_path:
             return None
 
-        # 3. Load training images
         extensions = {
             ".png", ".jpg", ".jpeg",
             ".bmp", ".tif", ".tiff", ".webp",
@@ -299,25 +287,22 @@ class FaceRecognition(ForensicsTool):
             and path.suffix.lower() in extensions
         )
 
-        X_train = self._load_images(paths)
+        with Image.open(test_path) as image:
+            test_pixels = np.asarray(image.convert("RGB"), dtype=np.float32)
+        X_train = self._load_images(paths, exclude=test_pixels)
 
-        # 4. Compute PCA from training images
         pov = 0.95
 
         self._perform_PCA(X_train, pov=pov)
 
-        # 5. Load test image
         test_image = self._load_test_image(test_path)
 
-        # 6. Calculate test image coefficients
         test_coefficients = self._get_test_coefficients(
             test_image
         )
 
-        # 7. Get training image labels
         labels = self._get_labels(training_folder_path)
 
-        # 8. Choose number of nearest neighbours
         max_neighbors = min(3, len(X_train))
 
         n_neighbors = simpledialog.askinteger(
@@ -333,13 +318,11 @@ class FaceRecognition(ForensicsTool):
         if n_neighbors is None:
             return None
 
-        # 9. Find the closest training faces
         indices, distances = self._find_closest_faces(
             test_coefficients,
             n_neighbors,
         )
 
-        # 10. Visualize results
         self._visualize_results(
             test_image,
             indices,
@@ -347,7 +330,6 @@ class FaceRecognition(ForensicsTool):
             labels,
         )
 
-        # 11. Return results
         matches = [
             {
                 "Rank": position + 1,
