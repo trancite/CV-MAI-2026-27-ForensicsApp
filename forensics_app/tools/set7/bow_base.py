@@ -2,7 +2,7 @@
 
 from abc import abstractmethod
 from pathlib import Path
-from tkinter import filedialog
+from tkinter import filedialog, simpledialog
 import numpy as np
 from PIL import Image
 from sklearn.cluster import MiniBatchKMeans
@@ -60,13 +60,23 @@ class BoWTool(KeypointTool):
         if parameters is None: return None
         folder = filedialog.askdirectory(title="Select training classes", parent=parent, mustexist=True)
         if not folder: return None
+        n_words = simpledialog.askinteger(
+            "Visual words", "Number of visual words per class:", initialvalue=10, minvalue=1, parent=parent,
+        )
+        if n_words is None: return None
         exclude = document.path.resolve() if self.requires_image and document.path else None
         images = self._return_classes_images(parent, folder, exclude)
         classes = self._classes_and_descriptors(images, algorithm, parameters)
-        batches = [d for d in classes.values() if len(d)]
-        if not batches: return ToolResult(message="No descriptors found in the training images.")
-        self.codebook_ = self.perform_k_means(np.vstack(batches), 10 * len(classes))
-        self.centroids_ = self.codebook_.cluster_centers_
+        if not classes: return ToolResult(message="No descriptors found in the training images.")
+        self.codebooks_ = {}
+        for name, descriptors in classes.items():
+            if not len(descriptors): return ToolResult(message=f"No descriptors found in class '{name}'.")
+            model = self.perform_k_means(descriptors, n_words)
+            if model.n_clusters < n_words:
+                return ToolResult(message=f"Class '{name}' only supports {model.n_clusters} words. Choose a smaller number.")
+            self.codebooks_[name] = model
+        self.words_per_class_ = n_words
+        self.centroids_ = np.vstack([model.cluster_centers_ for model in self.codebooks_.values()])
         self.algorithm_, self.parameters_ = algorithm, parameters
         return self._show_result(document, classes)
 

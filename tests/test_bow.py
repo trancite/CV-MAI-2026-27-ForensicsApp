@@ -1,4 +1,4 @@
-"""Global vocabulary, test histograms, and chi-squared SVM classification."""
+"""Per-class vocabularies, test histograms, and chi-squared SVM classification."""
 
 import os
 os.environ.setdefault("MPLBACKEND", "Agg")
@@ -6,6 +6,7 @@ os.environ.setdefault("MPLBACKEND", "Agg")
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from contextlib import contextmanager
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -88,11 +89,12 @@ class BagOfWordsTests(unittest.TestCase):
                 self.tool.perform_k_means(values, count)
 
     @contextmanager
-    def _workflow(self, images, algorithm="SIFT", parameters=None):
+    def _workflow(self, images, algorithm="SIFT", parameters=None, n_words=2):
         parameters = parameters or {"n_octaves": 2, "n_scales": 3, "sigma_min": 1.6}
         with patch.object(self.tool, "_choose_algorithm", return_value=algorithm), \
              patch.object(self.tool, "_choose_parameters", return_value=parameters), \
              patch(f"{self.module}.filedialog.askdirectory", return_value="training"), \
+             patch("forensics_app.tools.set7.bow_base.simpledialog.askinteger", return_value=n_words), \
              patch.object(self.tool, "_return_classes_images", return_value=images):
             yield
 
@@ -114,21 +116,26 @@ class BagOfWordsTests(unittest.TestCase):
             self.assertEqual(len(images["cats"]), 1)
             np.testing.assert_array_equal(images["cats"][0][0, 0], [0, 0, 255])
 
-    def test_every_class_has_one_patch_for_each_shared_centroid(self):
+    def test_each_class_uses_its_own_centroids_for_visual_words(self):
         cat = self.rng.integers(1, 256, (50, 50, 3), dtype=np.uint8)
         dog = self.rng.integers(1, 256, (50, 50, 3), dtype=np.uint8)
-        classes = {"cats": np.array([[0, 0]], dtype=np.float32),
+        classes = {"cats": np.array([[0, 0], [8, 8]], dtype=np.float32),
                    "dogs": np.array([[10, 10], [20, 20]], dtype=np.float32)}
-        self.tool.features_ = {"cats": [(cat, np.array([[7, 3]]), classes["cats"])],
+        self.tool.features_ = {"cats": [(cat, np.array([[7, 3], [10, 20]]), classes["cats"])],
                                "dogs": [(dog, np.array([[20, 24], [40, 8]]), classes["dogs"])]}
-        self.tool.centroids_ = np.array([[9, 10], [0, 0]], dtype=np.float32)
+        self.tool.codebooks_ = {
+            "cats": SimpleNamespace(cluster_centers_=np.array([[7, 8], [0, 0]], dtype=np.float32)),
+            "dogs": SimpleNamespace(cluster_centers_=np.array([[20, 19], [11, 10]], dtype=np.float32)),
+        }
         patches = self.tool._representative_patches(classes, patch_size=10)
         self.assertEqual({name: len(images) for name, images in patches.items()}, {"cats": 2, "dogs": 2})
-        self.assertEqual(patches["dogs"][0].getpixel((5, 5)), tuple(dog[20, 24]))
+        self.assertEqual(patches["cats"][0].getpixel((5, 5)), tuple(cat[10, 20]))
         self.assertEqual(patches["cats"][1].getpixel((5, 5)), tuple(cat[7, 3]))
+        self.assertEqual(patches["dogs"][0].getpixel((5, 5)), tuple(dog[40, 8]))
+        self.assertEqual(patches["dogs"][1].getpixel((5, 5)), tuple(dog[20, 24]))
         self.assertEqual(patches["cats"][1].getpixel((0, 5)), (0, 0, 0))
 
-    def test_one_global_codebook_and_equal_word_counts_in_each_gallery(self):
+    def test_one_codebook_per_class_and_exact_requested_word_counts_in_each_gallery(self):
         images = {"cats": [self.rng.integers(0, 256, (128, 192, 3), dtype=np.uint8)],
                   "dogs": [self.rng.integers(0, 256, (96, 128, 3), dtype=np.uint8)]}
         displayed = {}
@@ -144,16 +151,19 @@ class BagOfWordsTests(unittest.TestCase):
                         displayed[name].append(int(axis.get_title().split()[-1]))
                         self.assertEqual(axis.images[0].get_array().shape, (32, 32, 3))
 
-        with self._workflow(images, "ORB", {"n_keypoints": 30}), \
+        with self._workflow(images, "ORB", {"n_keypoints": 30}, n_words=10), \
              patch.object(self.tool, "perform_k_means", wraps=self.tool.perform_k_means) as fit, \
              patch("matplotlib.pyplot.show", side_effect=inspect_galleries):
             result = self.tool.run(None, ImageDocument())
-        fit.assert_called_once()
-        self.assertEqual(fit.call_args.args[0].shape, (60, 256))
-        self.assertEqual(fit.call_args.args[1], 20)
+        self.assertEqual(fit.call_count, 2)
+        self.assertEqual([call.args[0].shape for call in fit.call_args_list], [(30, 256), (30, 256)])
+        self.assertEqual([call.args[1] for call in fit.call_args_list], [10, 10])
+        self.assertEqual({name: model.cluster_centers_.shape for name, model in self.tool.codebooks_.items()},
+                         {"cats": (10, 256), "dogs": (10, 256)})
+        self.assertEqual(self.tool.words_per_class_, 10)
         self.assertEqual(self.tool.centroids_.shape, (20, 256))
-        self.assertEqual(displayed, {"cats": list(range(1, 21)), "dogs": list(range(1, 21))})
-        self.assertEqual(result.details, {"Classes": 2, "Visual words": 20})
+        self.assertEqual(displayed, {"cats": list(range(1, 11)), "dogs": list(range(1, 11))})
+        self.assertEqual(result.details, {"Classes": 2, "Visual words per class": 10, "Total visual words": 20})
         self.assertEqual(set(plt.get_fignums()), before)
         self.assertIsNone(result.image)
 
@@ -177,9 +187,39 @@ class BagOfWordsTests(unittest.TestCase):
                      patch.object(tool, "_choose_algorithm", return_value=algorithm), \
                      patch.object(tool, "_choose_parameters", return_value=parameters), \
                      patch(f"{self.module}.filedialog.askdirectory", return_value=folder), \
+                     patch("forensics_app.tools.set7.bow_base.simpledialog.askinteger", return_value=10), \
                      patch.object(tool, "_return_classes_images") as load:
                     self.assertIsNone(tool.run(None, document))
                     load.assert_not_called()
+
+    def test_shared_word_count_question_defaults_to_ten_and_supports_cancel(self):
+        for tool_class in (BagOfWords, HistogramConstruction, Classification):
+            tool = tool_class()
+            document = self._test_document() if tool.requires_image else ImageDocument()
+            with self.subTest(tool=tool.title), \
+                 patch.object(tool, "_choose_algorithm", return_value="ORB"), \
+                 patch.object(tool, "_choose_parameters", return_value={"n_keypoints": 30}), \
+                 patch(f"{self.module}.filedialog.askdirectory", return_value="training"), \
+                 patch(f"{self.module}.simpledialog.askinteger", return_value=None) as choose_count, \
+                 patch.object(tool, "_return_classes_images") as load:
+                self.assertIsNone(tool.run(None, document))
+            choose_count.assert_called_once()
+            self.assertEqual(choose_count.call_args.kwargs["initialvalue"], 10)
+            self.assertEqual(choose_count.call_args.kwargs["minvalue"], 1)
+            load.assert_not_called()
+
+    def test_too_few_distinct_features_does_not_silently_show_fewer_words(self):
+        images = {"cats": [np.zeros((40, 50, 3), dtype=np.uint8)]}
+        descriptors = np.array([np.full(128, value) for value in (0, 0, 10)], dtype=np.uint8)
+        with self._workflow(images, n_words=10), \
+             patch.object(self.tool, "_generate_keypoints_and_descriptors", return_value=(np.zeros((3, 2)), descriptors)), \
+             patch.object(self.tool, "_visualize_visual_words") as show:
+            result = self.tool.run(None, ImageDocument())
+        self.assertIn("cats", result.message)
+        self.assertIn("2", result.message)
+        self.assertIn("smaller", result.message)
+        show.assert_not_called()
+        self.assertIsNone(result.image)
 
     def test_histogram_counts_closest_centroids_and_retains_zero_bins(self):
         centroids = np.array([[0, 0], [10, 10], [20, 20]], dtype=np.float32)
@@ -197,7 +237,7 @@ class BagOfWordsTests(unittest.TestCase):
                 self.assertIn("Open a test image first", result.message)
                 choose.assert_not_called()
 
-    def test_histogram_trains_a_global_vocabulary_and_uses_the_current_grayscale_image(self):
+    def test_histogram_combines_class_codebooks_and_uses_the_current_grayscale_image(self):
         self.tool = HistogramConstruction()
         images = {"cats": [np.zeros((40, 50, 3), dtype=np.uint8)], "dogs": [np.zeros((50, 60, 3), dtype=np.uint8)]}
         batches = [np.array([np.full(128, x) for x in values], dtype=np.uint8)
@@ -217,8 +257,8 @@ class BagOfWordsTests(unittest.TestCase):
              patch.object(self.tool, "perform_k_means", wraps=self.tool.perform_k_means) as fit, \
              patch("matplotlib.pyplot.show", side_effect=inspect_histogram):
             result = self.tool.run(None, document)
-        fit.assert_called_once()
-        self.assertEqual(fit.call_args.args[1], 20)
+        self.assertEqual(fit.call_count, 2)
+        self.assertEqual([call.args[1] for call in fit.call_args_list], [2, 2])
         np.testing.assert_array_equal(self.tool.histogram_[np.argsort(self.tool.centroids_.mean(axis=1))], [1, 2, 0, 1])
         np.testing.assert_array_equal(shown, self.tool.histogram_)
         np.testing.assert_array_equal(extract.call_args.args[0], np.asarray(document.current.convert("L")))

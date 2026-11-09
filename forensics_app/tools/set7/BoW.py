@@ -19,7 +19,7 @@ class BagOfWords(BoWTool):
         for name, descriptors in classes.items():
             if not len(descriptors): continue
             sources = [(image, y, x) for image, points, _ in self.features_[name] for y, x in points]
-            indices, _ = pairwise_distances_argmin_min(self.centroids_, descriptors)
+            indices, _ = pairwise_distances_argmin_min(self.codebooks_[name].cluster_centers_, descriptors)
             patches[name] = []
             for index in indices:
                 image, y, x = sources[index]
@@ -34,7 +34,7 @@ class BagOfWords(BoWTool):
             rows = (len(patches) + columns - 1) // columns
             figure, axes = plt.subplots(rows, columns, figsize=(2 * columns, 2 * rows), squeeze=False)
             figures.append(figure)
-            figure.suptitle(f"{name}: {len(patches)} shared visual words")
+            figure.suptitle(f"{name}: {len(patches)} visual words")
             for index, axis in enumerate(axes.flat):
                 axis.axis("off")
                 if index < len(patches):
@@ -49,4 +49,5 @@ class BagOfWords(BoWTool):
         self.visual_word_patches_ = self._representative_patches(classes)
         self._visualize_visual_words(self.visual_word_patches_)
         return ToolResult(message="Visual words displayed.",
-                          details={"Classes": len(classes), "Visual words": len(self.centroids_)})
+                          details={"Classes": len(self.codebooks_), "Visual words per class": self.words_per_class_,
+                                   "Total visual words": len(self.centroids_)})

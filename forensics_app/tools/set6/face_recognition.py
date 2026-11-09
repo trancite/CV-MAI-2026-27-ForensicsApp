@@ -192,7 +192,6 @@ class FaceRecognition(ForensicsTool):
         n_neighbors: int = 3,
     ) -> tuple[np.ndarray, np.ndarray]:
 
-        # Euclidean distance in PCA coefficient space
         differences = self.coefficients_ - test_coefficients
 
         distances = np.linalg.norm(differences, axis=1)
@@ -258,7 +257,6 @@ class FaceRecognition(ForensicsTool):
             document.path.resolve() if document.path else None
         )
 
-        # 1. Select training folder
         training_folder = self._choose_set(parent, current_path)
 
         if not training_folder:
@@ -266,7 +264,6 @@ class FaceRecognition(ForensicsTool):
 
         training_folder_path = Path(training_folder).resolve()
 
-        # 2. Select test image
         test_path = self._choose_test_image(
             parent,
             training_folder,
