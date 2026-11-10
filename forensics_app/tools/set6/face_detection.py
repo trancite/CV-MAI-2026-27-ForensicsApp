@@ -102,7 +102,10 @@ class FaceDetection(ForensicsTool):
 
         self._check_model()
         output = document.current.convert("RGB")
-        detector = cv2.FaceDetectorYN.create(str(self.model_path), "", output.size, *parameters)
+        model_bytes = np.fromfile(str(self.model_path), dtype=np.uint8)
+        detector = cv2.FaceDetectorYN.create(
+            "onnx", model_bytes, np.empty(0, dtype=np.uint8), output.size, *parameters,
+        )
         bgr = cv2.cvtColor(np.asarray(output), cv2.COLOR_RGB2BGR)
         _, faces = detector.detect(bgr)
         draw = ImageDraw.Draw(output)
