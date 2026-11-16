@@ -50,3 +50,6 @@ datasets/
 *_BASE_*.py
 *_LOCAL_*.py
 *_REMOTE_*.py
+
+/inception_cifar10.zip
+/inception_cifar10/*.keras

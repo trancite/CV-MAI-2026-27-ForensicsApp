@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, font as tkfont, messagebox, ttk
 
 from PIL import Image, UnidentifiedImageError
 
@@ -152,8 +152,11 @@ class MainWindow:
         self.results = ttk.Treeview(inspector, columns=("value",), show="tree headings", height=15)
         self.results.heading("#0", text="Property")
         self.results.heading("value", text="Value")
-        self.results.column("#0", width=95, stretch=True)
-        self.results.column("value", width=120, stretch=True)
+        self.results.column("#0", width=95, stretch=False)
+        self.results.column("value", width=120, stretch=False)
+        results_scroll = ttk.Scrollbar(inspector, orient="horizontal", command=self.results.xview)
+        results_scroll.pack(side="bottom", fill="x")
+        self.results.configure(xscrollcommand=results_scroll.set)
         self.results.pack(fill="both", expand=True)
 
         ttk.Label(container, textvariable=self.status, anchor="w", padding=(10, 6), relief="sunken").pack(fill="x")
@@ -319,6 +322,10 @@ class MainWindow:
             self.results.delete(item)
         for name, value in details.items():
             self.results.insert("", "end", text=str(name), values=(str(value),))
+        font = tkfont.nametofont("TkDefaultFont")
+        self.results.column("#0", width=max([95] + [font.measure(str(name)) + 24 for name in details]))
+        self.results.column("value", width=max([120] + [font.measure(str(value)) + 24 for value in details.values()]))
+        self.results.xview_moveto(0)
 
     def show_about(self) -> None:
         messagebox.showinfo(

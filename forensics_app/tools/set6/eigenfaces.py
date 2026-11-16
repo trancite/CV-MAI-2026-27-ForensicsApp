@@ -147,8 +147,7 @@ class EigenFaces(ForensicsTool):
         count = len(self.components_)
         k = simpledialog.askinteger(
             "Eigenface visualization", f"How many of the {count} eigenfaces should be shown?",
-            initialvalue=min(12, count), minvalue=1, maxvalue=count, parent=parent,
-        )
+            initialvalue=min(12, count), minvalue=1, maxvalue=count, parent=parent)
         if k is None:
             return None
         self._visualize_eigenfaces(k)

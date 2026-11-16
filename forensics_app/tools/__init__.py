@@ -29,6 +29,8 @@ from .set7.BoW import BagOfWords
 from .set7.histogram_construction import HistogramConstruction
 
 from .set7.classification import Classification
+from .set8.model_load import ClassifyWithPretrainedModel
+from .set8.feature_projection import FeatureProjection
 
 
 def build_tool_registry() -> ToolRegistry:
@@ -60,6 +62,8 @@ def build_tool_registry() -> ToolRegistry:
             BagOfWords(),
             HistogramConstruction(),
             Classification(),
+            ClassifyWithPretrainedModel(),
+            FeatureProjection(),
         ]
     )
 
