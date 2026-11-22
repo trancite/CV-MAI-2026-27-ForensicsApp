@@ -1,6 +1,8 @@
 """Register course functionality here so it appears in the sidebar."""
 
 
+from forensics_app.tools.set9 import YOLOmodel_load
+
 from .grayscale import GrayscaleTool
 from .image_info import ImageInfoTool
 from .registry import ToolRegistry
@@ -27,10 +29,11 @@ from .set6.eigenfaces import EigenFaces
 from .set6.face_recognition import FaceRecognition
 from .set7.BoW import BagOfWords
 from .set7.histogram_construction import HistogramConstruction
-
 from .set7.classification import Classification
 from .set8.model_load import ClassifyWithPretrainedModel
 from .set8.feature_projection import FeatureProjection
+from .set9.YOLOmodel_load import YOLOModelLoader
+from .set9.YOLOfeatureprojection import YOLOFeatureProjection
 
 
 def build_tool_registry() -> ToolRegistry:
@@ -63,7 +66,8 @@ def build_tool_registry() -> ToolRegistry:
             HistogramConstruction(),
             Classification(),
             ClassifyWithPretrainedModel(),
-            FeatureProjection(),
+            YOLOFeatureProjection(),
+            YOLOModelLoader(),
         ]
     )
 
