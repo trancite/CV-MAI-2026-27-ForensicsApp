@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import tkinter as tk
-
+import skimage
 import numpy as np
 import skimage.exposure as exposure
 import skimage.color as color  # Añadimos la importación de color para el espacio LAB
