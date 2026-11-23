@@ -32,6 +32,9 @@ class FeatureProjectionTests(unittest.TestCase):
         self.tool.model = keras.Model(inputs, keras.layers.Dense(2)(features))
         weights = np.column_stack((np.eye(3), np.ones(3))).astype(np.float32)
         self.tool.model.layers[-2].set_weights([weights])
+        self.tool.passport = {
+            "preprocessing": {"color": "RGB", "size": [8, 8], "normalization": "minus_one_one"},
+        }
 
     @unittest.skipUnless(importlib.util.find_spec("tensorflow"), "TensorFlow is optional")
     def test_extracts_latent_vectors_in_batches_with_aligned_labels_and_paths(self):
@@ -65,6 +68,30 @@ class FeatureProjectionTests(unittest.TestCase):
             Image.new("RGB", (10, 12), "white").save(Path(directory) / "test.png")
             features, labels, paths = self.tool._extract_features(directory)
         self.assertEqual(features.shape, (1, 4))
+        self.assertEqual(labels.tolist(), ["Unlabelled"])
+        self.assertEqual(paths.tolist(), ["test.png"])
+
+    @unittest.skipUnless(importlib.util.find_spec("tensorflow"), "TensorFlow is optional")
+    def test_loaded_sequential_model_uses_its_passport_for_feature_extraction(self):
+        from tensorflow import keras
+
+        model = keras.Sequential([
+            keras.Input(shape=(8, 8, 3)),
+            keras.layers.GlobalAveragePooling2D(),
+            keras.layers.Dense(3, use_bias=False),
+            keras.layers.Dense(2),
+        ])
+        model.layers[-2].set_weights([np.eye(3, dtype=np.float32)])
+        self.tool.passport = {
+            "preprocessing": {"color": "RGB", "size": [8, 8], "normalization": "zero_one"},
+        }
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            model.save(root / "sequential.keras")
+            self.tool.model = keras.models.load_model(root / "sequential.keras", compile=False)
+            Image.new("RGB", (14, 10), "red").save(root / "test.png")
+            features, labels, paths = self.tool._extract_features(root)
+        np.testing.assert_allclose(features, [[1, 0, 0]], atol=1e-6)
         self.assertEqual(labels.tolist(), ["Unlabelled"])
         self.assertEqual(paths.tolist(), ["test.png"])
 
@@ -116,6 +143,39 @@ class FeatureProjectionTests(unittest.TestCase):
             self.assertEqual(projection.shape, (40, 2))
             self.assertTrue(np.isfinite(projection).all())
         self.assertEqual(set(plt.get_fignums()), before)
+
+    def test_invalid_feature_archives_are_rejected_without_replacing_loaded_features(self):
+        self.tool.features = np.ones((3, 2), dtype=np.float32)
+        self.tool.labels = np.array(["cat"] * 3)
+        self.tool.paths = np.array(["a.png", "b.png", "c.png"])
+        original = self.tool.features
+        valid = {"features": original, "labels": self.tool.labels, "paths": self.tool.paths}
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "features.npz"
+            invalid = [
+                ({"features": original}, "Could not load"),
+                ({**valid, "features": np.empty((0, 2))}, "non-empty matrix"),
+                ({**valid, "features": np.ones((3, 2, 1))}, "non-empty matrix"),
+                ({**valid, "features": np.full((3, 2), np.nan)}, "finite numbers"),
+                ({**valid, "labels": np.array(["cat"])}, "Labels"),
+                ({**valid, "paths": np.array([1, 2, 3])}, "Paths"),
+                ({**valid, "features": np.ones((3, 2), dtype=object)}, "Could not load"),
+            ]
+            for values, message in invalid:
+                with self.subTest(message=message, keys=list(values)):
+                    np.savez_compressed(path, **values)
+                    with self.assertRaisesRegex(ValueError, message):
+                        self.tool._load_features(path)
+                    self.assertIs(self.tool.features, original)
+            path.write_bytes(b"not a feature archive")
+            with self.assertRaisesRegex(ValueError, "Could not load"):
+                self.tool._load_features(path)
+
+    def test_projection_requires_at_least_three_vectors(self):
+        self.tool.features = np.ones((2, 4), dtype=np.float32)
+        self.tool.labels = np.array(["cat", "dog"])
+        with self.assertRaisesRegex(ValueError, "At least three"):
+            self.tool._visualize_features()
 
     def test_cancel_save_does_not_load_model_or_extract_images(self):
         with patch(f"{self.module}.dialog_options", return_value=self.tool.options[0]), \

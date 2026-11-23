@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from tkinter import filedialog
+from zipfile import BadZipFile
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,25 +21,30 @@ class FeatureProjection(ClassifyWithPretrainedModel):
     requires_image = False
 
     def __init__(self):
+        super().__init__()
         self.options = ["Extract and save features", "Load and visualize features"]
 
     def _extract_features(self, folder):
         import tensorflow as tf
 
-        extractor = tf.keras.Model(self.model.input, self.model.layers[-2].output)
         root = Path(folder)
+        if not root.is_dir():
+            raise ValueError("Select an existing folder of test images.")
+        if len(self.model.layers) < 2:
+            raise ValueError("The model needs a feature layer before its classification output.")
+        # Loaded Sequential models expose inputs even when their .input property is unset.
+        extractor = tf.keras.Model(self.model.inputs[0], self.model.layers[-2].output)
         extensions = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp"}
         batches, images, labels, paths = [], [], [], []
         for path in sorted(root.rglob("*")):
-            if path.suffix.lower() not in extensions or path.name.startswith("."):
+            if not path.is_file() or path.suffix.lower() not in extensions or path.name.startswith("."):
                 continue
             try:
                 with Image.open(path) as image:
                     image = np.asarray(image.convert("RGB"), dtype=np.float32)
             except OSError:
                 continue
-            image = tf.image.resize(image, self.model.input_shape[1:3]).numpy()
-            images.append(image / 127.5 - 1)
+            images.append(self._preprocess_image(image))
             labels.append(path.relative_to(root).parts[0] if path.parent != root else "Unlabelled")
             paths.append(path.relative_to(root).as_posix())
             if len(images) == 32:
@@ -48,20 +54,42 @@ class FeatureProjection(ClassifyWithPretrainedModel):
             batches.append(extractor(np.stack(images), training=False).numpy())
         if not batches:
             raise ValueError("No valid images found in the test folder.")
-        return np.vstack(batches), np.asarray(labels), np.asarray(paths)
+        features = np.concatenate(batches, axis=0)
+        features = features.reshape(len(labels), -1)
+        labels, paths = np.asarray(labels), np.asarray(paths)
+        self._validate_features(features, labels, paths)
+        return features, labels, paths
+
+    @staticmethod
+    def _validate_features(features, labels, paths=None):
+        if (features.ndim != 2 or not all(features.shape)
+                or features.dtype.kind not in "fiu" or not np.isfinite(features).all()):
+            raise ValueError("Features must be a non-empty matrix of finite numbers.")
+        for name, values in (("Labels", labels), ("Paths", paths)):
+            if values is None and name == "Paths":
+                continue
+            if values.ndim != 1 or len(values) != len(features) or values.dtype.kind not in "US":
+                raise ValueError(f"{name} must contain one text value per feature vector.")
 
     def _load_features(self, path):
-        with np.load(path, allow_pickle=False) as data:
-            self.features = data["features"]
-            self.labels = data["labels"]
-            self.paths = data["paths"]
+        try:
+            data = np.load(path, allow_pickle=False)
+            if not isinstance(data, np.lib.npyio.NpzFile):
+                raise ValueError("Select a .npz file containing features, labels and paths.")
+            with data:
+                features, labels, paths = data["features"], data["labels"], data["paths"]
+        except (OSError, ValueError, KeyError, EOFError, BadZipFile) as error:
+            raise ValueError("Could not load test features. Select a valid .npz file with features, labels and paths.") from error
+        self._validate_features(features, labels, paths)
+        self.features, self.labels, self.paths = features, labels, paths
 
     def _visualize_features(self):
-        from umap import UMAP
-
+        self._validate_features(self.features, self.labels)
         count = len(self.features)
         if count < 3:
             raise ValueError("At least three test images are needed for the projections.")
+        from umap import UMAP
+
         self.projections = {
             "t-SNE": TSNE(n_components=2, perplexity=min(30, count - 1),
                           init="random", learning_rate="auto", random_state=42).fit_transform(self.features),
@@ -85,7 +113,8 @@ class FeatureProjection(ClassifyWithPretrainedModel):
             return None
         if option == self.options[0]:
             model_path = filedialog.askopenfilename(
-                title="Select model ZIP", parent=parent, filetypes=[("Model ZIP", "*.zip")])
+                title="Select trained model", parent=parent,
+                filetypes=[("Trained model", "*.zip *.keras")])
             if not model_path:
                 return None
             folder = filedialog.askdirectory(title="Select test images", parent=parent, mustexist=True)

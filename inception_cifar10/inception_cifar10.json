@@ -17,6 +17,7 @@
   ],
   "preprocessing": {
     "color": "RGB",
+    "normalization": "minus_one_one",
     "size": [
       128,
       128

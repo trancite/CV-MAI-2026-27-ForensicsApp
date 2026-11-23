@@ -34,6 +34,7 @@ from .set8.model_load import ClassifyWithPretrainedModel
 from .set8.feature_projection import FeatureProjection
 from .set9.YOLOmodel_load import YOLOModelLoader
 from .set9.YOLOfeatureprojection import YOLOFeatureProjection
+from .set9.coco_to_yolo import COCOToYOLO
 
 
 def build_tool_registry() -> ToolRegistry:
@@ -66,8 +67,10 @@ def build_tool_registry() -> ToolRegistry:
             HistogramConstruction(),
             Classification(),
             ClassifyWithPretrainedModel(),
-            YOLOFeatureProjection(),
+            FeatureProjection(),
             YOLOModelLoader(),
+            COCOToYOLO(),
+            YOLOFeatureProjection(),
         ]
     )
 

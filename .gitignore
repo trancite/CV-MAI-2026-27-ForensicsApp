@@ -53,3 +53,7 @@ datasets/
 
 /inception_cifar10.zip
 /inception_cifar10/*.keras
+
+# Local Set 8 model weights; passports remain versioned
+/cnn_small.zip
+/cnn_small/*.keras
